@@ -1377,12 +1377,12 @@ function loadGbif(sp,recs,seen){
     total=j.count||0; sp.total=total; ingest(j); done=GBIF_PAGE;
     var target=Math.min(total,cap,GBIF_MAX), offsets=[];
     for(var o=GBIF_PAGE;o<target;o+=GBIF_PAGE) offsets.push(o);
-    sp.progress=[recs.length,target]; showProgress();
+    sp.progress=[recs.length,target]; showProgress(); schedulePartial();
     var i=0;
     function worker(){
       if(i>=offsets.length||stopFlag) return Promise.resolve();
       var off=offsets[i++];
-      return getJson(gbifUrl(sp.match.key,off,GBIF_PAGE)).then(function(jj){ ingest(jj); done+=GBIF_PAGE; sp.progress=[recs.length,target]; showProgress(); return worker(); });
+      return getJson(gbifUrl(sp.match.key,off,GBIF_PAGE)).then(function(jj){ ingest(jj); done+=GBIF_PAGE; sp.progress=[recs.length,target]; showProgress(); schedulePartial(); return worker(); });
     }
     return Promise.all([worker(),worker(),worker()]).then(function(){ sp.capped=Math.min(done,target)<total; });
   });
@@ -1423,12 +1423,12 @@ function loadAla(sp,recs,seen){
     total=j.totalRecords||0; sp.total=total; ingest(j); done=ALA_PAGE;
     var target=Math.min(total,cap), offsets=[];
     for(var o=ALA_PAGE;o<target;o+=ALA_PAGE) offsets.push(o);
-    sp.progress=[recs.length,target]; showProgress();
+    sp.progress=[recs.length,target]; showProgress(); schedulePartial();
     var i=0;
     function worker(){
       if(i>=offsets.length||stopFlag) return Promise.resolve();
       var off=offsets[i++];
-      return getJson(alaUrl(q,off)).then(function(jj){ ingest(jj); done+=ALA_PAGE; sp.progress=[recs.length,target]; showProgress(); return worker(); });
+      return getJson(alaUrl(q,off)).then(function(jj){ ingest(jj); done+=ALA_PAGE; sp.progress=[recs.length,target]; showProgress(); schedulePartial(); return worker(); });
     }
     return Promise.all([worker(),worker(),worker()]).then(function(){ sp.capped=Math.min(done,target)<total; });
   });
@@ -1442,13 +1442,16 @@ function pump(){
   if(!active&&!queue.length) stopFlag=false;
   showProgress();
 }
+var partialTimer=null;
+function schedulePartial(){ if(partialTimer) return; partialTimer=setTimeout(function(){ partialTimer=null; applyFilters(); },1500); }
 function loadSpecies(sp){
-  sp.loading=true; sp.error=null; sp.progress=[0,sp.total||0]; sp.prov=filters.prov; renderRow(sp); showProgress();
+  sp.loading=true; sp.error=null; sp.progress=[0,sp.total||0]; sp.prov=filters.prov; sp.markers=null; renderRow(sp); showProgress();
   var recs=[], seen={};
+  sp.recs=recs; /* same array is filled page by page, so partial results can be drawn while loading */
   var run=sp.prov==='ala'?loadAla(sp,recs,seen):loadGbif(sp,recs,seen);
-  return run.then(function(){ sp.recs=recs; sp.loaded=true; })
-  .catch(function(e){ sp.error=(e&&e.message)||'Request failed'; if(recs.length){ sp.recs=recs; sp.loaded=true; sp.capped=true; } })
-  .then(function(){ sp.loading=false; sp.progress=null; sp.markers=null; renderRow(sp); applyFilters(); save(); showProgress(); });
+  return run.then(function(){ sp.loaded=true; })
+  .catch(function(e){ sp.error=(e&&e.message)||'Request failed'; if(recs.length){ sp.loaded=true; sp.capped=true; } else { sp.recs=[]; } })
+  .then(function(){ sp.loading=false; sp.progress=null; if(partialTimer){ clearTimeout(partialTimer); partialTimer=null; } renderRow(sp); applyFilters(); save(); showProgress(); });
 }
 function countOne(sp){
   if(filters.prov==='ala') return getJson(alaUrl('taxa:"'+sp.def.n+'"',0,0)).then(function(j){ return j.totalRecords||0; });
@@ -1466,13 +1469,15 @@ function countAll(){
 
 /* ---------- markers, filters ---------- */
 function ensureMarkers(sp){
-  if(sp.markers) return;
-  sp.markers=sp.recs.map(function(r){
-    var mk=L.circleMarker([r.lat,r.lng],{radius:6,weight:1,color:'rgba(0,0,0,.75)',fillColor:sp.color,fillOpacity:.95});
-    mk.rec=r;
-    mk.on('click',function(){ popup.setLatLng([r.lat,r.lng]).setContent(popupHtml(r)); map.openPopup(popup); if(isMobile()) setTab('map'); });
-    return mk;
-  });
+  if(!sp.markers) sp.markers=[];
+  for(var i=sp.markers.length;i<sp.recs.length;i++){
+    (function(r){
+      var mk=L.circleMarker([r.lat,r.lng],{radius:6,weight:1,color:'rgba(0,0,0,.75)',fillColor:sp.color,fillOpacity:.95});
+      mk.rec=r;
+      mk.on('click',function(){ popup.setLatLng([r.lat,r.lng]).setContent(popupHtml(r)); map.openPopup(popup); if(isMobile()) setTab('map'); });
+      sp.markers.push(mk);
+    })(sp.recs[i]);
+  }
 }
 function passes(r,skipMonth){
   if(filters.year&&(!r.y||r.y<filters.year)) return false;
@@ -1486,7 +1491,7 @@ var shownRecs=[];
 function applyFilters(){
   var layers=[], shown=0, loaded=0, nsp=0; shownRecs=[];
   reg.forEach(function(sp){
-    if(!sp.visible||!sp.loaded) return;
+    if(!sp.visible||!(sp.loaded||(sp.loading&&sp.recs.length))) return;
     ensureMarkers(sp); nsp++; loaded+=sp.recs.length; sp.shown=0;
     sp.markers.forEach(function(mk){ if(passes(mk.rec,false)){ layers.push(mk); shownRecs.push(mk.rec); sp.shown++; } });
     shown+=sp.shown;
