@@ -13,6 +13,7 @@ Points are sightings, not confirmed stands. Verify by drone and on the ground be
 
 - Tick species in the Species tab (or "Load tier A grasses"). Add any species by scientific name.
 - Filters: year, month photographed (phenology proxy), record type, coordinate uncertainty, radius from a tapped point or your location, load cap.
+- Photos: thumbnail grid of every photo point in the current map view (or all shown), newest first; tap one to jump to its point.
 - Results: month histogram, top hotspot cells (10 km), per-species sparklines, CSV / GeoJSON export (opens in QGIS).
 - iPhone: open in Safari → Share → Add to Home Screen.
 
