@@ -308,7 +308,7 @@ input[type=range]{width:100%;accent-color:var(--accent);margin-top:8px}
           <button data-stand="some" type="button">Some +</button>
           <button data-stand="tagged" type="button">My tags</button>
         </div>
-        <p class="hint">Large = record notes say dominant / abundant / extensive, a count of 100+, 12+ sightings of that species within ~1.5 km, or your own tag. Large-stand points draw with a white ring.</p>
+        <p class="hint">Large = record notes say dominant / abundant / extensive, a count of 100+, 20+ sightings of that species within ~1.5 km, or your own tag. Garden, nursery and reveg records are marked as likely planted. Large-stand points draw with a white ring.</p>
       </div>
       <div class="f">
         <label>Record type</label>
@@ -531,8 +531,9 @@ var RX_SOME=/\b(frequent|frequently|scattered|several|many|numerous|patch(es|y)?
 /* 'common' only in lower case or at a sentence start, so place names like Townsville Town Common don't count */
 var RX_COMMON=/(\bcommon\b|(^|[.;:!]\s*)Common\b)/;
 function snippet(text,rx){ var m=text.match(rx); if(!m) return ''; var i=m.index, a=Math.max(0,i-50), b=Math.min(text.length,i+m[0].length+60); return (a>0?'…':'')+text.slice(a,b).replace(/\s+/g,' ').trim()+(b<text.length?'…':''); }
+var RX_PLANTED=/\b(botanic(al)? gardens?|arboretum|nursery|planted|cultivated|cultivation|garden bed|street tree|revegetation|reveg|rehab(ilitation)? (site|area|planting)|amenity planting)\b/i;
 function standFromText(r){
-  var t=(r.notes||''); if(!t) return null;
+  var t=(r.notes||'').replace(/sub-?dominant/ig,''); if(!t) return null;
   if(RX_LARGE.test(t)) return {lvl:3,why:snippet(t,RX_LARGE),src:'notes'};
   if(RX_FEW.test(t)) return {lvl:1,why:snippet(t,RX_FEW),src:'notes'};
   if(RX_SOME.test(t)) return {lvl:2,why:snippet(t,RX_SOME),src:'notes'};
@@ -553,9 +554,12 @@ function computeStand(r){
   var ev=[], best=0, bestWhy='', tag=tags[tagKey(r)];
   var t=standFromText(r); if(t){ ev.push(t); }
   var c=standFromCount(r); if(c){ ev.push(c); }
-  if(r.dens!=null){ var dl=r.dens>=12?3:(r.dens>=5?2:0); if(dl){ ev.push({lvl:dl,why:fmt(r.dens)+' sightings within ~1.5 km',src:'density'}); } }
+  if(r.dens!=null){ var dl=r.dens>=20?3:(r.dens>=6?2:0); if(dl){ ev.push({lvl:dl,why:fmt(r.dens)+' sightings within ~1.5 km',src:'density'}); } }
   ev.forEach(function(e){ if(e.lvl>best){ best=e.lvl; bestWhy=e.why; } });
   var why=ev.map(function(e){ return e.why+(e.src==='notes'?' (record notes)':''); }).join(' · ');
+  r.planted=RX_PLANTED.test((r.notes||'')+' '+(r.loc||''))||/managed|cultivated/i.test(r.estab||'');
+  if(r.planted&&!tag){ best=0; why='Likely planted (garden, nursery or reveg record)'+(why?' · '+why:''); ev=[]; }
+  r.standEv=ev;
   if(tag){ r.stand={lvl:tag.lvl,why:'Your tag'+(tag.note?': '+tag.note:'')+(why?' · '+why:''),src:'tag',auto:best}; }
   else r.stand={lvl:best,why:why,src:ev.length?ev[0].src:'',auto:best};
   return r.stand;
@@ -610,7 +614,7 @@ function normGbif(o,sp){
   var r={id:'g'+(o.gbifID||o.key||(lat+','+lng+','+(o.eventDate||''))),sp:sp,lat:lat,lng:lng,date:d.date,y:d.y,m:d.m,
     sci:o.species||o.acceptedScientificName||o.scientificName||sp.def.n,src:src,kind:kind,by:o.recordedBy||img.by||'',lic:licLabel(o.license||img.lic),
     unc:(+o.coordinateUncertaintyInMeters)||null,loc:o.locality||o.verbatimLocality||'',thumb:img.thumb,small:img.small,large:img.large,nimg:img.n,link:link,ref:ref,prov:'gbif',
-    notes:notesOf([o.eventRemarks,o.occurrenceRemarks,o.fieldNotes,o.habitat]),count:cnt.count,countType:cnt.countType,dens:null};
+    notes:notesOf([o.eventRemarks,o.occurrenceRemarks,o.fieldNotes,o.habitat]),count:cnt.count,countType:cnt.countType,dens:null,estab:(o.establishmentMeans||'')+' '+(o.degreeOfEstablishment||'')};
   computeStand(r); return r;
 }
 function loadGbif(sp,recs,seen){
@@ -895,12 +899,13 @@ function renderStands(){
     var c=cells[k]||(cells[k]={n:0,tag:0,notes:0,count:0,dens:0,lat:0,lng:0,sp:{},why:'',best:null});
     c.n++; c.lat+=r.lat; c.lng+=r.lng; c.sp[r.sp.def.n]=(c.sp[r.sp.def.n]||0)+1;
     if(!c.loc&&r.loc) c.loc=r.loc;
+    var ev3=(r.standEv||[]).filter(function(e){ return e.lvl===3; });
     if(r.stand.src==='tag') c.tag++;
-    if(/record notes/.test(r.stand.why)) c.notes++;
-    if(/counted|% cover/.test(r.stand.why)) c.count++;
-    if(/sightings within/.test(r.stand.why)) c.dens++;
-    var score=(r.stand.src==='tag'?4:0)+(/record notes/.test(r.stand.why)?2:0)+(/counted|% cover/.test(r.stand.why)?2:0)+(/sightings within/.test(r.stand.why)?1:0);
-    if(!c.best||score>c.best.score){ c.best={score:score,r:r}; c.why=r.stand.why; }
+    if(ev3.some(function(e){ return e.src==='notes'; })) c.notes++;
+    if(ev3.some(function(e){ return e.src==='count'; })) c.count++;
+    if(ev3.some(function(e){ return e.src==='density'; })) c.dens++;
+    var score=(r.stand.src==='tag'?4:0)+(ev3.some(function(e){ return e.src==='notes'; })?2:0)+(ev3.some(function(e){ return e.src==='count'; })?2:0)+(ev3.some(function(e){ return e.src==='density'; })?1:0);
+    if(!c.best||score>c.best.score){ var w3=ev3.map(function(e){ return e.why; }).join(' · '); c.best={score:score,r:r}; c.why=(r.stand.src==='tag'?r.stand.why:w3); }
   });
   var ref=refPoint();
   var arr=Object.keys(cells).map(function(k){ var c=cells[k]; c.score=c.tag*1000+c.notes*10+c.count*10+c.dens+c.n*0.1; c.la=c.lat/c.n; c.lo=c.lng/c.n; c.dist=ref?hav(ref.lat,ref.lng,c.la,c.lo):null; return c; }).sort(function(a,b){ return b.score-a.score; }).slice(0,15);
