@@ -133,6 +133,9 @@ input[type=range]{width:100%;accent-color:var(--accent);margin-top:8px}
 .hot .what{min-width:0;font-size:12.5px;line-height:1.25}
 .hot .what b{font-variant-numeric:tabular-nums}
 .hot .what small{display:block;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hot.stand-row .what small{white-space:normal;overflow:visible;line-height:1.25}
+.hot .acts{display:flex;gap:4px;align-items:center}
+.hot .acts a.btn{text-decoration:none;color:var(--fg);display:inline-grid;place-items:center}
 .rs{display:grid;grid-template-columns:12px 1fr 60px auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
 .rs .names{min-width:0}
 .rs .spark{height:22px;width:60px}
@@ -162,6 +165,16 @@ input[type=range]{width:100%;accent-color:var(--accent);margin-top:8px}
 .pp-sci{font-style:italic;font-weight:600;font-size:15px}
 .pp-com{color:var(--muted);font-size:12.5px}
 .pp-meta{font-size:12px;color:var(--muted);margin-top:4px}
+.pp-stand{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:8px}
+.stand{font-family:var(--font-head);font-weight:700;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:3px 7px;border-radius:5px;color:var(--bg);background:var(--faint);white-space:nowrap}
+.stand.s3{background:var(--accent);color:var(--accent-ink)}
+.stand.s2{background:var(--tierB);color:var(--bg)}
+.stand.s1{background:var(--line-2);color:var(--fg)}
+.pp-why{font-size:12px;color:var(--muted);flex:1 1 140px;min-width:0}
+.pp-tag{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.pp-tag-l{font-family:var(--font-head);font-weight:600;font-size:11.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+.pp-note{flex:1 1 100%;background:var(--panel-2);border:1px solid var(--line-2);border-radius:6px;padding:6px 8px;font-size:12.5px;color:var(--fg);min-width:0}
+.pp-notes{font-style:italic}
 .pp-coords{display:flex;align-items:center;gap:8px;margin-top:8px}
 .pp-links{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;font-size:12.5px;font-weight:600}
 .ph-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -172,7 +185,10 @@ input[type=range]{width:100%;accent-color:var(--accent);margin-top:8px}
 .ph .cap i{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
 .ph .cap small{opacity:.85}
 .ph .sw{position:absolute;top:5px;left:5px;width:9px;height:9px;border-radius:50%;background:var(--c);border:1px solid rgba(0,0,0,.6)}
-.ph.herb::after{content:"H";position:absolute;top:3px;right:5px;font-family:var(--font-head);font-weight:700;font-size:10px;color:#fff;background:rgba(0,0,0,.55);border-radius:4px;padding:1px 4px}
+.ph .chips2{position:absolute;top:3px;right:4px;display:flex;gap:3px}
+.ph .chips2 b{font-family:var(--font-head);font-weight:700;font-size:10px;color:#fff;background:rgba(0,0,0,.55);border-radius:4px;padding:1px 4px}
+.ph .chips2 b.L{background:var(--accent);color:var(--accent-ink)}
+.ph.big{outline:2px solid var(--accent);outline-offset:-2px}
 .ph:focus-visible{outline:2px solid var(--accent)}
 .me{background:transparent;border:0}
 .me>div{width:16px;height:16px;border-radius:50%;background:#3b9bff;border:3px solid #fff;box-shadow:0 0 0 3px rgba(59,155,255,.35)}
@@ -285,6 +301,16 @@ input[type=range]{width:100%;accent-color:var(--accent);margin-top:8px}
         <p class="hint">Proxy for when the plant is conspicuous: flowering or seeding. Leave empty for all months.</p>
       </div>
       <div class="f">
+        <label>Stand size</label>
+        <div class="seg" id="fStand">
+          <button data-stand="all" class="on" type="button">All</button>
+          <button data-stand="large" type="button">Large</button>
+          <button data-stand="some" type="button">Some +</button>
+          <button data-stand="tagged" type="button">My tags</button>
+        </div>
+        <p class="hint">Large = record notes say dominant / abundant / extensive, a count of 100+, 12+ sightings of that species within ~1.5 km, or your own tag. Large-stand points draw with a white ring.</p>
+      </div>
+      <div class="f">
         <label>Record type</label>
         <div class="seg" id="fSrc">
           <button data-src="all" class="on" type="button">All</button>
@@ -340,6 +366,14 @@ input[type=range]{width:100%;accent-color:var(--accent);margin-top:8px}
       <h3>Month photographed</h3>
       <svg id="pheno" viewBox="0 0 360 96" preserveAspectRatio="none" role="img" aria-label="Records by month"></svg>
       <p class="hint">Tap a bar to filter that month. Covers every point currently shown.</p>
+      <h3>Large stands · ranked</h3>
+      <div id="stands"><p class="hint">Load a species. Sites rank by your tags first, then by how strong the evidence is: record notes, plant counts, sighting density.</p></div>
+      <div class="row-actions">
+        <button id="btnTagsOut" class="btn sm ghost" type="button">Export my tags</button>
+        <label class="btn sm ghost" for="tagsIn" style="cursor:pointer">Import tags</label>
+        <input id="tagsIn" type="file" accept="application/json,.json" hidden>
+      </div>
+      <p class="hint">Tags live in this browser. Export the JSON to move them to another device or share with the crew; importing merges.</p>
       <h3>Hotspots · 10 km cells</h3>
       <div id="hotspots"><p class="hint">Load a species to rank the densest cells.</p></div>
       <h3>Loaded species</h3>
@@ -399,13 +433,13 @@ function hav(a1,o1,a2,o2){var R=6371,d=Math.PI/180,dA=(a2-a1)*d,dO=(o2-o1)*d;var
 var reg=new Map();
 function mkSp(def,i){return {def:def,idx:i,color:colorFor(i),loaded:false,loading:false,visible:false,total:null,recs:[],markers:null,error:null,progress:null,capped:false,shown:0};}
 SPECIES.forEach(function(d,i){reg.set(d.n,mkSp(d,i));});
-var filters={year:0,months:new Set(),src:'all',unc:0,cap:5000,prov:'gbif'};
+var filters={year:0,months:new Set(),src:'all',unc:0,cap:5000,prov:'gbif',stand:'all'};
 var radius=null, radiusCircle=null, radiusArming=false;
 var base='sat', activeTab='species', stopFlag=false, meMarker=null;
 
 function save(){
   try{
-    var o={sel:[],custom:[],counts:{},match:matchCache,filters:{year:filters.year,months:Array.from(filters.months),src:filters.src,unc:filters.unc,cap:filters.cap,prov:filters.prov},radius:radius,base:base,tab:activeTab};
+    var o={sel:[],custom:[],counts:{},match:matchCache,filters:{year:filters.year,months:Array.from(filters.months),src:filters.src,unc:filters.unc,cap:filters.cap,prov:filters.prov,stand:filters.stand},radius:radius,base:base,tab:activeTab};
     reg.forEach(function(sp){ if(sp.visible)o.sel.push(sp.def.n); if(sp.def.g==='custom')o.custom.push(sp.def); if(sp.total!=null)o.counts[sp.def.n]=sp.total; });
     localStorage.setItem(LS_KEY,JSON.stringify(o));
   }catch(e){}
@@ -444,10 +478,27 @@ var cluster=L.markerClusterGroup({
 });
 map.addLayer(cluster);
 var popup=L.popup({maxWidth:300,minWidth:250,className:'qp',autoPanPaddingTopLeft:[10,70],autoPanPaddingBottomRight:[10,isMobile()?70:10]});
-map.on('popupopen',function(e){
-  var el=e.popup.getElement(); if(!el) return;
+var popupRec=null;
+function wirePopup(){
+  var el=popup.getElement(); if(!el) return;
   var b=el.querySelector('[data-copy]'); if(b){ b.addEventListener('click',function(){ var t=b.getAttribute('data-copy'); (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.reject()).then(function(){b.textContent='Copied';},function(){ var r=document.createRange(); r.selectNodeContents(b.previousElementSibling); var s=getSelection(); s.removeAllRanges(); s.addRange(r); }); }); }
-});
+  var tagBox=el.querySelector('.pp-tag');
+  if(tagBox&&popupRec){
+    var r=popupRec;
+    function setTag(lvl,note){
+      if(lvl>0){ tags[tagKey(r)]={lvl:lvl,note:note||'',sp:r.sp.def.n,lat:r.lat,lng:r.lng,when:new Date().toISOString().slice(0,10)}; }
+      else delete tags[tagKey(r)];
+      saveTags(); computeStand(r); r.sp.markers=null;
+      /* re-render after the click has finished bubbling, or Leaflet treats the detached button as a map click and closes the popup */
+      setTimeout(function(){ popup.setContent(popupHtml(r)); wirePopup(); applyFilters(); },0);
+    }
+    tagBox.querySelectorAll('[data-tag]').forEach(function(btn){ btn.addEventListener('click',function(ev){ ev.stopPropagation(); setTag(+btn.dataset.tag,tagBox.querySelector('[data-note]').value.trim()); }); });
+    var noteEl=tagBox.querySelector('[data-note]');
+    noteEl.addEventListener('change',function(){ var t=tags[tagKey(r)]; if(t){ t.note=noteEl.value.trim(); saveTags(); computeStand(r); renderStands(); } });
+    noteEl.addEventListener('keydown',function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); var t=tags[tagKey(r)]; setTag(t?t.lvl:3,noteEl.value.trim()); } });
+  }
+}
+map.on('popupopen',wirePopup);
 
 /* ---------- shared helpers ---------- */
 function getJson(url){
@@ -471,6 +522,52 @@ function licLabel(s){
   return String(s).replace(/^CC[-_ ]/,'CC ').replace(/_/g,' ');
 }
 function isInfra(name){ return /\b(subsp|ssp|var|f|forma|subvar)\.?\s/i.test(name)||name.trim().split(/\s+/).length>2; }
+
+/* ---------- stand size: text + counts + density + your own tags ---------- */
+var STAND_L=['Unknown','Single / few','Some','Large stand'];
+var RX_LARGE=/\b(co-?dominant|dominant|dominates|dominating|abundant|abundance|extensive|dense(ly)?|large (population|stand|patch|area|colony|clump|infestation)|thousands|hundreds|widespread|monoculture|carpet(s|ing)?|sward|whole (paddock|hillside|slope|flat)|hectares?|throughout|prolific|thick(ly)?|mass(es)? of|forming (a )?(dense|large|thick)|understorey dominant|main grass|major grass|principal grass)\b/i;
+var RX_FEW=/\b(single|one plant|one tussock|one clump|isolated|solitary|only one|a few|few plants|few tussocks|sparse|scarce|uncommon|rare|infrequent)\b/i;
+var RX_SOME=/\b(common|frequent|frequently|scattered|several|many|numerous|patch(es|y)?|clumps?|tussocks|locally (common|abundant)|occasional(ly)?|plentiful|good (stand|population)|population|stand of|colony)\b/i;
+function snippet(text,rx){ var m=text.match(rx); if(!m) return ''; var i=m.index, a=Math.max(0,i-50), b=Math.min(text.length,i+m[0].length+60); return (a>0?'…':'')+text.slice(a,b).replace(/\s+/g,' ').trim()+(b<text.length?'…':''); }
+function standFromText(r){
+  var t=(r.notes||''); if(!t) return null;
+  if(RX_LARGE.test(t)) return {lvl:3,why:snippet(t,RX_LARGE),src:'notes'};
+  if(RX_FEW.test(t)) return {lvl:1,why:snippet(t,RX_FEW),src:'notes'};
+  if(RX_SOME.test(t)) return {lvl:2,why:snippet(t,RX_SOME),src:'notes'};
+  return null;
+}
+function standFromCount(r){
+  if(r.count==null) return null;
+  var n=r.count, cover=/cover|%|percent/i.test(r.countType||'');
+  var lvl=cover?(n>=25?3:(n>=5?2:1)):(n>=100?3:(n>=10?2:1));
+  return {lvl:lvl,why:(cover?n+'% cover':fmt(n)+' plants counted'),src:'count'};
+}
+var tags={};
+function loadTags(){ try{ tags=JSON.parse(localStorage.getItem(LS_KEY+'-tags')||'{}')||{}; }catch(e){ tags={}; } }
+function saveTags(){ try{ localStorage.setItem(LS_KEY+'-tags',JSON.stringify(tags)); }catch(e){} }
+function tagKey(r){ return r.id; }
+function computeStand(r){
+  var ev=[], best=0, bestWhy='', tag=tags[tagKey(r)];
+  var t=standFromText(r); if(t){ ev.push(t); }
+  var c=standFromCount(r); if(c){ ev.push(c); }
+  if(r.dens!=null){ var dl=r.dens>=12?3:(r.dens>=5?2:0); if(dl){ ev.push({lvl:dl,why:fmt(r.dens)+' sightings within ~1.5 km',src:'density'}); } }
+  ev.forEach(function(e){ if(e.lvl>best){ best=e.lvl; bestWhy=e.why; } });
+  var why=ev.map(function(e){ return e.why+(e.src==='notes'?' (record notes)':''); }).join(' · ');
+  if(tag){ r.stand={lvl:tag.lvl,why:'Your tag'+(tag.note?': '+tag.note:'')+(why?' · '+why:''),src:'tag',auto:best}; }
+  else r.stand={lvl:best,why:why,src:ev.length?ev[0].src:'',auto:best};
+  return r.stand;
+}
+function computeDensity(sp){
+  var cells={}, k;
+  sp.recs.forEach(function(r){ k=Math.floor(r.lat*100)+','+Math.floor(r.lng*100); cells[k]=(cells[k]||0)+1; });
+  sp.recs.forEach(function(r){
+    var cy=Math.floor(r.lat*100), cx=Math.floor(r.lng*100), n=0;
+    for(var dy=-1;dy<=1;dy++) for(var dx=-1;dx<=1;dx++) n+=cells[(cy+dy)+','+(cx+dx)]||0;
+    r.dens=n; computeStand(r);
+  });
+}
+function notesOf(parts){ return parts.filter(function(x){ return x&&String(x).trim(); }).map(function(x){ return String(x).trim(); }).join(' · ').slice(0,500); }
+function countOf(ic,oq,oqt){ var n=(ic!=null&&ic!=='')?+ic:((oq!=null&&oq!=='')?+oq:NaN); return isFinite(n)?{count:n,countType:(ic!=null&&ic!=='')?'individuals':(oqt||'')}:{count:null,countType:''}; }
 
 /* ---------- GBIF (primary) ---------- */
 var matchCache={};
@@ -506,9 +603,12 @@ function normGbif(o,sp){
   if(kind==='inat') src='iNaturalist';
   var link='https://www.gbif.org/occurrence/'+encodeURIComponent(o.gbifID||o.key||'');
   var ref=(o.references&&/^https?:/.test(o.references))?o.references:null;
-  return {id:'g'+(o.gbifID||o.key||(lat+','+lng+','+(o.eventDate||''))),sp:sp,lat:lat,lng:lng,date:d.date,y:d.y,m:d.m,
+  var cnt=countOf(o.individualCount,o.organismQuantity,o.organismQuantityType);
+  var r={id:'g'+(o.gbifID||o.key||(lat+','+lng+','+(o.eventDate||''))),sp:sp,lat:lat,lng:lng,date:d.date,y:d.y,m:d.m,
     sci:o.species||o.acceptedScientificName||o.scientificName||sp.def.n,src:src,kind:kind,by:o.recordedBy||img.by||'',lic:licLabel(o.license||img.lic),
-    unc:(+o.coordinateUncertaintyInMeters)||null,loc:o.locality||o.verbatimLocality||'',thumb:img.thumb,small:img.small,large:img.large,nimg:img.n,link:link,ref:ref,prov:'gbif'};
+    unc:(+o.coordinateUncertaintyInMeters)||null,loc:o.locality||o.verbatimLocality||'',thumb:img.thumb,small:img.small,large:img.large,nimg:img.n,link:link,ref:ref,prov:'gbif',
+    notes:notesOf([o.eventRemarks,o.occurrenceRemarks,o.fieldNotes,o.habitat]),count:cnt.count,countType:cnt.countType,dens:null};
+  computeStand(r); return r;
 }
 function loadGbif(sp,recs,seen){
   var cap=filters.cap||GBIF_MAX, total=0, done=0;
@@ -532,10 +632,11 @@ function loadGbif(sp,recs,seen){
 }
 
 /* ---------- ALA (secondary) ---------- */
+var ALA_FL='id,uuid,eventDate,scientificName,vernacularName,decimalLatitude,decimalLongitude,coordinateUncertaintyInMeters,year,month,basisOfRecord,dataResourceUid,dataResourceName,images,image,recordedBy,license,locality,habitat,eventRemarks,occurrenceRemarks,individualCount,organismQuantity,organismQuantityType';
 function alaUrl(q,start,pageSize){
   var p=new URLSearchParams();
   p.set('q',q); p.append('fq','state:"Queensland"'); p.append('fq','multimedia:"Image"');
-  p.set('pageSize',pageSize==null?ALA_PAGE:pageSize); p.set('start',start); p.set('sort','id'); p.set('dir','asc');
+  p.set('pageSize',pageSize==null?ALA_PAGE:pageSize); p.set('start',start); p.set('sort','id'); p.set('dir','asc'); p.set('fl',ALA_FL);
   return ALA_SEARCH+'?'+p.toString();
 }
 function alaImages(o){
@@ -552,13 +653,16 @@ function normAla(o,sp){
   var lat=+o.decimalLatitude, lng=+o.decimalLongitude;
   if(!isFinite(lat)||!isFinite(lng)||(lat===0&&lng===0)) return null;
   var img=alaImages(o); if(!img) return null;
-  var d=parseDate(o.eventDate,o.year,o.month);
+  var d=parseDate(o.eventDate,o.year,o.month), x=o.otherProperties||{};
   var by=o.recordedBy; if(Array.isArray(by)) by=by.join(', ');
   var kind=o.dataResourceUid===INAT_ALA?'inat':(/specimen/i.test(o.basisOfRecord||'')?'herb':'other');
-  return {id:'a'+(o.uuid||(lat+','+lng+','+(o.eventDate||''))),sp:sp,lat:lat,lng:lng,date:d.date,y:d.y,m:d.m,
+  var cnt=countOf(x.individualCount||o.individualCount,x.organismQuantity||o.organismQuantity,x.organismQuantityType||o.organismQuantityType);
+  var r={id:'a'+(o.uuid||(lat+','+lng+','+(o.eventDate||''))),sp:sp,lat:lat,lng:lng,date:d.date,y:d.y,m:d.m,
     sci:o.scientificName||sp.def.n,src:o.dataResourceName||'ALA',kind:kind,by:by||'',lic:licLabel(o.license||''),
-    unc:(+o.coordinateUncertaintyInMeters)||null,loc:o.locality||'',thumb:img.thumb,small:img.small,large:img.large,nimg:img.n,
-    link:o.uuid?'https://biocache.ala.org.au/occurrences/'+encodeURIComponent(o.uuid):null,ref:null,prov:'ala'};
+    unc:(+o.coordinateUncertaintyInMeters)||null,loc:o.locality||x.locality||'',thumb:img.thumb,small:img.small,large:img.large,nimg:img.n,
+    link:o.uuid?'https://biocache.ala.org.au/occurrences/'+encodeURIComponent(o.uuid):null,ref:null,prov:'ala',
+    notes:notesOf([x.eventRemarks||o.eventRemarks,x.occurrenceRemarks||o.occurrenceRemarks,x.habitat||o.habitat]),count:cnt.count,countType:cnt.countType,dens:null};
+  computeStand(r); return r;
 }
 function loadAla(sp,recs,seen){
   var cap=filters.cap||Infinity, q='taxa:"'+sp.def.n+'"', total=0, done=0;
@@ -595,7 +699,7 @@ function loadSpecies(sp){
   var run=sp.prov==='ala'?loadAla(sp,recs,seen):loadGbif(sp,recs,seen);
   return run.then(function(){ sp.loaded=true; })
   .catch(function(e){ sp.error=(e&&e.message)||'Request failed'; if(recs.length){ sp.loaded=true; sp.capped=true; } else { sp.recs=[]; } })
-  .then(function(){ sp.loading=false; sp.progress=null; if(partialTimer){ clearTimeout(partialTimer); partialTimer=null; } renderRow(sp); applyFilters(); save(); showProgress(); });
+  .then(function(){ sp.loading=false; sp.progress=null; if(partialTimer){ clearTimeout(partialTimer); partialTimer=null; } computeDensity(sp); sp.markers=null; renderRow(sp); applyFilters(); save(); showProgress(); });
 }
 function countOne(sp){
   if(filters.prov==='ala') return getJson(alaUrl('taxa:"'+sp.def.n+'"',0,0)).then(function(j){ return j.totalRecords||0; });
@@ -616,9 +720,10 @@ function ensureMarkers(sp){
   if(!sp.markers) sp.markers=[];
   for(var i=sp.markers.length;i<sp.recs.length;i++){
     (function(r){
-      var mk=L.circleMarker([r.lat,r.lng],{radius:6,weight:1,color:'rgba(0,0,0,.75)',fillColor:sp.color,fillOpacity:.95});
+      var big=r.stand&&r.stand.lvl===3;
+      var mk=L.circleMarker([r.lat,r.lng],{radius:big?8:6,weight:big?2.5:1,color:big?'#fff':'rgba(0,0,0,.75)',fillColor:sp.color,fillOpacity:.95});
       mk.rec=r;
-      mk.on('click',function(){ popup.setLatLng([r.lat,r.lng]).setContent(popupHtml(r)); map.openPopup(popup); if(isMobile()) setTab('map'); });
+      mk.on('click',function(){ popupRec=r; popup.setLatLng([r.lat,r.lng]).setContent(popupHtml(r)); map.openPopup(popup); if(isMobile()) setTab('map'); });
       sp.markers.push(mk);
     })(sp.recs[i]);
   }
@@ -627,6 +732,9 @@ function passes(r,skipMonth){
   if(filters.year&&(!r.y||r.y<filters.year)) return false;
   if(!skipMonth&&filters.months.size&&!(r.m&&filters.months.has(r.m))) return false;
   if(filters.src!=='all'&&r.kind!==filters.src) return false;
+  if(filters.stand==='large'&&!(r.stand&&r.stand.lvl===3)) return false;
+  if(filters.stand==='some'&&!(r.stand&&r.stand.lvl>=2)) return false;
+  if(filters.stand==='tagged'&&!tags[tagKey(r)]) return false;
   if(filters.unc&&r.unc&&r.unc>filters.unc) return false;
   if(radius&&hav(r.lat,r.lng,radius.lat,radius.lng)>radius.km) return false;
   return true;
@@ -643,7 +751,7 @@ function applyFilters(){
   cluster.clearLayers(); if(layers.length) cluster.addLayers(layers);
   $('#stShown').textContent=fmt(shown); $('#stLoaded').textContent=fmt(loaded); $('#stSpecies').textContent=fmt(nsp);
   $('#status').textContent=nsp?(fmt(shown)+' photo points · '+nsp+' species · Queensland'):'Photo-backed ALA records · Queensland';
-  renderPheno(); renderHotspots(); renderResults(); renderPhotos();
+  renderPheno(); renderStands(); renderHotspots(); renderResults(); renderPhotos();
 }
 function popupHtml(r){
   var date=r.date?r.date.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):(r.y?String(r.y)+(r.m?' · '+MONTH_F[r.m-1]:''):'Date unknown');
@@ -654,10 +762,16 @@ function popupHtml(r){
   links+='<a href="https://www.google.com/maps/search/?api=1&query='+r.lat+'%2C'+r.lng+'" target="_blank" rel="noopener">Google Maps</a>';
   links+='<a href="https://maps.apple.com/?ll='+r.lat+','+r.lng+'&q='+encodeURIComponent(r.sci)+'" target="_blank" rel="noopener">Apple Maps</a>';
   var more=r.nimg>1?'<span class="pp-n">+'+(r.nimg-1)+' more</span>':'';
+  var st=r.stand||computeStand(r), tag=tags[tagKey(r)];
+  var standHtml='<div class="pp-stand"><span class="stand s'+st.lvl+'">'+esc(STAND_L[st.lvl])+'</span>'+(st.why?'<span class="pp-why">'+esc(st.why)+'</span>':'<span class="pp-why">No abundance notes on this record</span>')+'</div>'+
+    '<div class="pp-tag" data-id="'+esc(r.id)+'"><span class="pp-tag-l">Tag it</span>'+[3,2,1].map(function(l){ return '<button class="btn xs'+(tag&&tag.lvl===l?' primary':'')+'" type="button" data-tag="'+l+'">'+esc(['','Few','Some','Large'][l])+'</button>'; }).join('')+(tag?'<button class="btn xs ghost" type="button" data-tag="0">Clear</button>':'')+
+    '<input type="text" class="pp-note" data-note placeholder="Note (access, seed stage, owner…)" value="'+esc(tag&&tag.note||'')+'" maxlength="140"></div>';
   return '<div class="pp"><a class="pp-img" href="'+esc(r.large||r.thumb)+'" target="_blank" rel="noopener"><img src="'+esc(r.thumb)+'" alt="Photo of '+esc(r.sci)+'" loading="lazy" onerror="this.parentNode.classList.add(\'broken\')">'+more+'</a>'+
     '<div class="pp-body"><div class="pp-sci">'+esc(r.sci)+'</div><div class="pp-com">'+esc(r.sp.def.c||'')+(r.sp.def.h?' · '+esc(r.sp.def.h):'')+'</div>'+
+    standHtml+
     '<div class="pp-meta">'+esc(date)+(r.src?' · '+esc(r.src):'')+(r.by?' · '+esc(r.by):'')+'</div>'+
     '<div class="pp-meta">'+esc(r.lic||'Licence not stated')+(r.unc?' · ±'+fmt(Math.round(r.unc))+' m':'')+(r.loc?' · '+esc(r.loc):'')+'</div>'+
+    (r.notes&&!st.why?'<div class="pp-meta pp-notes">'+esc(r.notes.slice(0,220))+(r.notes.length>220?'…':'')+'</div>':'')+
     '<div class="pp-coords"><code>'+c+'</code><button class="btn xs" type="button" data-copy="'+c+'">Copy</button></div>'+
     '<div class="pp-links">'+links+'</div></div></div>';
 }
@@ -725,6 +839,7 @@ $('#fUnc').addEventListener('change',function(e){ filters.unc=+e.target.value; a
 $('#fCap').addEventListener('change',function(e){ filters.cap=+e.target.value; save(); });
 $$('#fSrc button').forEach(function(b){ b.addEventListener('click',function(){ filters.src=b.dataset.src; $$('#fSrc button').forEach(function(x){ x.classList.toggle('on',x===b); }); applyFilters(); save(); }); });
 $$('#fProv button').forEach(function(b){ b.addEventListener('click',function(){ filters.prov=b.dataset.prov; $$('#fProv button').forEach(function(x){ x.classList.toggle('on',x===b); }); save(); }); });
+$$('#fStand button').forEach(function(b){ b.addEventListener('click',function(){ filters.stand=b.dataset.stand; $$('#fStand button').forEach(function(x){ x.classList.toggle('on',x===b); }); applyFilters(); save(); }); });
 
 function setRadiusCentre(lat,lng){ radius={lat:lat,lng:lng,km:+$('#fRadius').value}; drawRadius(); applyFilters(); save(); }
 function drawRadius(){
@@ -768,6 +883,39 @@ function renderHotspots(){
     return '<div class="hot"><span class="rank">'+(i+1)+'</span><span class="what"><b>'+fmt(c.n)+'</b> points · <span class="mono">'+la.toFixed(2)+', '+lo.toFixed(2)+'</span><small>'+esc(sps)+'</small></span><button class="btn xs" type="button" data-zoom="'+la.toFixed(4)+','+lo.toFixed(4)+'">Zoom</button></div>'; }).join('');
   $$('#hotspots [data-zoom]').forEach(function(b){ b.addEventListener('click',function(){ var p=b.dataset.zoom.split(','); map.setView([+p[0],+p[1]],12); if(isMobile()) setTab('map'); }); });
 }
+function refPoint(){ if(radius) return radius; if(meMarker){ var ll=meMarker.getLatLng(); return {lat:ll.lat,lng:ll.lng}; } return null; }
+function renderStands(){
+  var el=$('#stands'), cells={};
+  shownRecs.forEach(function(r){
+    if(!r.stand||r.stand.lvl<3) return;
+    var k=Math.floor(r.lat*50)+','+Math.floor(r.lng*50); /* ~2 km cells */
+    var c=cells[k]||(cells[k]={n:0,tag:0,notes:0,count:0,dens:0,lat:0,lng:0,sp:{},why:'',best:null});
+    c.n++; c.lat+=r.lat; c.lng+=r.lng; c.sp[r.sp.def.n]=(c.sp[r.sp.def.n]||0)+1;
+    if(!c.loc&&r.loc) c.loc=r.loc;
+    if(r.stand.src==='tag') c.tag++;
+    if(/record notes/.test(r.stand.why)) c.notes++;
+    if(/counted|% cover/.test(r.stand.why)) c.count++;
+    if(/sightings within/.test(r.stand.why)) c.dens++;
+    var score=(r.stand.src==='tag'?4:0)+(/record notes/.test(r.stand.why)?2:0)+(/counted|% cover/.test(r.stand.why)?2:0)+(/sightings within/.test(r.stand.why)?1:0);
+    if(!c.best||score>c.best.score){ c.best={score:score,r:r}; c.why=r.stand.why; }
+  });
+  var ref=refPoint();
+  var arr=Object.keys(cells).map(function(k){ var c=cells[k]; c.score=c.tag*1000+c.notes*10+c.count*10+c.dens+c.n*0.1; c.la=c.lat/c.n; c.lo=c.lng/c.n; c.dist=ref?hav(ref.lat,ref.lng,c.la,c.lo):null; return c; }).sort(function(a,b){ return b.score-a.score; }).slice(0,15);
+  if(!arr.length){ el.innerHTML='<p class="hint">'+(shownRecs.length?'No large-stand evidence among the points shown yet. Tag a point from its popup, or load more species.':'Load a species. Sites rank by your tags first, then by how strong the evidence is: record notes, plant counts, sighting density.')+'</p>'; return; }
+  el.innerHTML=arr.map(function(c,i){
+    var sps=Object.keys(c.sp).sort(function(a,b){ return c.sp[b]-c.sp[a]; }).slice(0,3).map(function(n){ var g=n.split(' '); return g[0].charAt(0)+'. '+(g[1]||'')+' '+c.sp[n]; }).join(' · ');
+    var where=(c.loc?c.loc.slice(0,48):c.la.toFixed(2)+', '+c.lo.toFixed(2));
+    var ev=[c.tag?c.tag+' tagged':'',c.notes?c.notes+' with notes':'',c.count?c.count+' counted':'',c.dens?'dense sightings':''].filter(Boolean).join(' · ');
+    return '<div class="hot stand-row"><span class="rank">'+(i+1)+'</span><span class="what"><b>'+esc(sps)+'</b>'+(c.dist!=null?' · <span class="mono">'+fmt(Math.round(c.dist))+' km</span>':'')+'<small>'+esc(where)+' · '+esc(ev)+(c.why?' — '+esc(c.why.slice(0,90)):'')+'</small></span><span class="acts"><button class="btn xs" type="button" data-zoom="'+c.la.toFixed(4)+','+c.lo.toFixed(4)+'">Zoom</button><a class="btn xs ghost" href="https://www.google.com/maps/dir/?api=1&destination='+c.la.toFixed(5)+'%2C'+c.lo.toFixed(5)+'" target="_blank" rel="noopener">Go</a></span></div>';
+  }).join('');
+  $$('#stands [data-zoom]').forEach(function(b){ b.addEventListener('click',function(){ var p=b.dataset.zoom.split(','); map.setView([+p[0],+p[1]],13); if(isMobile()) setTab('map'); }); });
+}
+$('#btnTagsOut').addEventListener('click',function(){ download('seed-atlas-tags-'+stamp()+'.json',JSON.stringify({exported:new Date().toISOString(),tags:tags},null,1),'application/json'); });
+$('#tagsIn').addEventListener('change',function(e){
+  var f=e.target.files&&e.target.files[0]; if(!f) return;
+  var rd=new FileReader(); rd.onload=function(){ try{ var j=JSON.parse(rd.result); var t=j.tags||j; var n=0; Object.keys(t).forEach(function(k){ if(t[k]&&t[k].lvl){ tags[k]=t[k]; n++; } }); saveTags(); reg.forEach(function(sp){ sp.recs.forEach(computeStand); sp.markers=null; }); applyFilters(); $('#btnTagsOut').textContent='Imported '+n; }catch(err){ $('#btnTagsOut').textContent='Import failed'; } e.target.value=''; };
+  rd.readAsText(f);
+});
 function renderResults(){
   var el=$('#resList'), rows=[];
   reg.forEach(function(sp){ if(sp.visible&&sp.loaded) rows.push(sp); });
@@ -785,7 +933,7 @@ function renderResults(){
 var phScope='view', phLimit=120, phList=[];
 function openRecord(r){
   map.setView([r.lat,r.lng],Math.max(map.getZoom(),14),{animate:false});
-  popup.setLatLng([r.lat,r.lng]).setContent(popupHtml(r)); map.openPopup(popup);
+  popupRec=r; popup.setLatLng([r.lat,r.lng]).setContent(popupHtml(r)); map.openPopup(popup);
   if(isMobile()) setTab('map');
 }
 function renderPhotos(reset){
@@ -799,7 +947,8 @@ function renderPhotos(reset){
   if(!phList.length){ grid.innerHTML='<p class="hint" style="grid-column:1/-1">'+(shownRecs.length?'No photo points in this part of the map. Pan or zoom out, or switch to "All shown".':'Load a species first.')+'</p>'; $('#phMore').hidden=true; return; }
   grid.innerHTML=phList.slice(0,phLimit).map(function(r,i){
     var g=r.sp.def.n.split(' '), short=g[0].charAt(0)+'. '+(g[1]||''), when=r.y?((r.m?MONTH_F[r.m-1]+' ':'')+r.y):'';
-    return '<button class="ph'+(r.kind==='herb'?' herb':'')+'" type="button" data-i="'+i+'" style="--c:'+r.sp.color+'" title="'+esc(r.sci)+(when?' · '+when:'')+'"><img src="'+esc(r.small||r.thumb)+'" alt="" loading="lazy" decoding="async"><span class="sw"></span><span class="cap"><i>'+esc(short)+'</i><small>'+esc(when)+'</small></span></button>';
+    var big=r.stand&&r.stand.lvl===3, chips=(r.kind==='herb'?'<b>H</b>':'')+(big?'<b class="L">L</b>':'');
+    return '<button class="ph'+(big?' big':'')+'" type="button" data-i="'+i+'" style="--c:'+r.sp.color+'" title="'+esc(r.sci)+(when?' · '+when:'')+(big?' · large stand':'')+'"><img src="'+esc(r.small||r.thumb)+'" alt="" loading="lazy" decoding="async"><span class="sw"></span>'+(chips?'<span class="chips2">'+chips+'</span>':'')+'<span class="cap"><i>'+esc(short)+'</i><small>'+esc(when)+'</small></span></button>';
   }).join('');
   $('#phMore').hidden=phList.length<=phLimit;
   $('#phMore').textContent='Show more ('+fmt(phList.length-Math.min(phLimit,phList.length))+' left)';
@@ -813,12 +962,12 @@ var phMoveT; map.on('moveend',function(){ if(activeTab!=='photos'||phScope!=='vi
 function download(name,text,type){ var blob=new Blob([text],{type:type}); var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500); }
 function csvCell(v){ v=v==null?'':String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
 function toCsv(recs){
-  var head=['species','matched_name','common_name','group','tier','lat','lon','date','year','month','record_type','source','recorded_by','licence','coord_uncertainty_m','locality','record_url','observation_url','photo_url','provider'];
-  var rows=recs.map(function(r){ return [r.sp.def.n,r.sci,r.sp.def.c,r.sp.def.g,r.sp.def.t,r.lat,r.lng,r.date?r.date.toISOString().slice(0,10):'',r.y||'',r.m||'',r.kind,r.src,r.by,r.lic,r.unc||'',r.loc,r.link||'',r.ref||'',r.large||r.thumb,r.prov].map(csvCell).join(','); });
+  var head=['species','matched_name','common_name','group','tier','lat','lon','date','year','month','record_type','source','recorded_by','licence','coord_uncertainty_m','locality','stand_size','stand_evidence','my_tag','my_note','record_notes','record_url','observation_url','photo_url','provider'];
+  var rows=recs.map(function(r){ var t=tags[tagKey(r)]||{}; return [r.sp.def.n,r.sci,r.sp.def.c,r.sp.def.g,r.sp.def.t,r.lat,r.lng,r.date?r.date.toISOString().slice(0,10):'',r.y||'',r.m||'',r.kind,r.src,r.by,r.lic,r.unc||'',r.loc,STAND_L[(r.stand||{}).lvl||0],(r.stand||{}).why||'',t.lvl?STAND_L[t.lvl]:'',t.note||'',r.notes||'',r.link||'',r.ref||'',r.large||r.thumb,r.prov].map(csvCell).join(','); });
   return head.join(',')+'\n'+rows.join('\n')+'\n';
 }
 function toGeoJson(recs){
-  return JSON.stringify({type:'FeatureCollection',features:recs.map(function(r){ return {type:'Feature',geometry:{type:'Point',coordinates:[r.lng,r.lat]},properties:{species:r.sp.def.n,matched_name:r.sci,common_name:r.sp.def.c,group:r.sp.def.g,tier:r.sp.def.t,date:r.date?r.date.toISOString().slice(0,10):null,year:r.y,month:r.m,record_type:r.kind,source:r.src,recorded_by:r.by,licence:r.lic,coord_uncertainty_m:r.unc,locality:r.loc,record_url:r.link,observation_url:r.ref,photo_url:r.large||r.thumb,provider:r.prov}}; })});
+  return JSON.stringify({type:'FeatureCollection',features:recs.map(function(r){ return {type:'Feature',geometry:{type:'Point',coordinates:[r.lng,r.lat]},properties:{species:r.sp.def.n,matched_name:r.sci,common_name:r.sp.def.c,group:r.sp.def.g,tier:r.sp.def.t,date:r.date?r.date.toISOString().slice(0,10):null,year:r.y,month:r.m,record_type:r.kind,source:r.src,recorded_by:r.by,licence:r.lic,coord_uncertainty_m:r.unc,locality:r.loc,stand_size:STAND_L[(r.stand||{}).lvl||0],stand_evidence:(r.stand||{}).why||'',my_tag:(tags[tagKey(r)]||{}).lvl?STAND_L[tags[tagKey(r)].lvl]:'',my_note:(tags[tagKey(r)]||{}).note||'',record_notes:r.notes||'',record_url:r.link,observation_url:r.ref,photo_url:r.large||r.thumb,provider:r.prov}}; })});
 }
 function stamp(){ var d=new Date(); return d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2); }
 $('#btnCsv').addEventListener('click',function(){ if(!shownRecs.length) return; download('qld-seed-atlas-'+stamp()+'.csv',toCsv(shownRecs),'text/csv'); });
@@ -859,8 +1008,10 @@ window.addEventListener('resize',function(){ if(!isMobile()&&activeTab==='map') 
   var s=restore();
   if(s&&s.custom) s.custom.forEach(function(d){ if(!reg.has(d.n)){ d.g='custom'; reg.set(d.n,mkSp(d,reg.size)); } });
   if(s&&s.counts) Object.keys(s.counts).forEach(function(n){ var sp=reg.get(n); if(sp) sp.total=s.counts[n]; });
-  if(s&&s.filters){ filters.year=+s.filters.year||0; filters.months=new Set(s.filters.months||[]); filters.src=s.filters.src||'all'; filters.unc=+s.filters.unc||0; filters.cap=s.filters.cap==null?5000:+s.filters.cap; filters.prov=s.filters.prov==='ala'?'ala':'gbif'; }
+  if(s&&s.filters){ filters.year=+s.filters.year||0; filters.months=new Set(s.filters.months||[]); filters.src=s.filters.src||'all'; filters.unc=+s.filters.unc||0; filters.cap=s.filters.cap==null?5000:+s.filters.cap; filters.prov=s.filters.prov==='ala'?'ala':'gbif'; filters.stand=/^(large|some|tagged)$/.test(s.filters.stand||'')?s.filters.stand:'all'; }
   if(s&&s.match&&typeof s.match==='object') matchCache=s.match;
+  loadTags();
+  $$('#fStand button').forEach(function(x){ x.classList.toggle('on',x.dataset.stand===filters.stand); });
   $('#fYear').value=String(filters.year); $('#fUnc').value=String(filters.unc); $('#fCap').value=String(filters.cap); syncMonths();
   $$('#fSrc button').forEach(function(x){ x.classList.toggle('on',x.dataset.src===filters.src); });
   $$('#fProv button').forEach(function(x){ x.classList.toggle('on',x.dataset.prov===filters.prov); });
