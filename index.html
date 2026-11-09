@@ -1408,13 +1408,16 @@ function isInfra(name){ return /\b(subsp|ssp|var|f|forma|subvar)\.?\s/i.test(nam
 var STAND_L=['Unknown','Single / few','Some','Large stand'];
 var RX_LARGE=/\b(co-?dominant|dominant|dominates|dominating|abundant|abundance|extensive|dense(ly)?|large (population|stand|patch|area|colony|clump|infestation)|thousands|hundreds|widespread|monoculture|carpet(s|ing)?|sward|whole (paddock|hillside|slope|flat)|hectares?|throughout|prolific|thick(ly)?|mass(es)? of|forming (a )?(dense|large|thick)|understorey dominant|main grass|major grass|principal grass)\b/i;
 var RX_FEW=/\b(single|one plant|one tussock|one clump|isolated|solitary|only one|a few|few plants|few tussocks|sparse|scarce|uncommon|rare|infrequent)\b/i;
-var RX_SOME=/\b(common|frequent|frequently|scattered|several|many|numerous|patch(es|y)?|clumps?|tussocks|locally (common|abundant)|occasional(ly)?|plentiful|good (stand|population)|population|stand of|colony)\b/i;
+var RX_SOME=/\b(frequent|frequently|scattered|several|many|numerous|patch(es|y)?|clumps?|tussocks|locally (common|abundant)|occasional(ly)?|plentiful|good (stand|population)|population|stand of|colony)\b/i;
+/* 'common' only in lower case or at a sentence start, so place names like Townsville Town Common don't count */
+var RX_COMMON=/(\bcommon\b|(^|[.;:!]\s*)Common\b)/;
 function snippet(text,rx){ var m=text.match(rx); if(!m) return ''; var i=m.index, a=Math.max(0,i-50), b=Math.min(text.length,i+m[0].length+60); return (a>0?'…':'')+text.slice(a,b).replace(/\s+/g,' ').trim()+(b<text.length?'…':''); }
 function standFromText(r){
   var t=(r.notes||''); if(!t) return null;
   if(RX_LARGE.test(t)) return {lvl:3,why:snippet(t,RX_LARGE),src:'notes'};
   if(RX_FEW.test(t)) return {lvl:1,why:snippet(t,RX_FEW),src:'notes'};
   if(RX_SOME.test(t)) return {lvl:2,why:snippet(t,RX_SOME),src:'notes'};
+  if(RX_COMMON.test(t)) return {lvl:2,why:snippet(t,RX_COMMON),src:'notes'};
   return null;
 }
 function standFromCount(r){
