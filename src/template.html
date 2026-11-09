@@ -533,7 +533,8 @@ var RX_COMMON=/(\bcommon\b|(^|[.;:!]\s*)Common\b)/;
 function snippet(text,rx){ var m=text.match(rx); if(!m) return ''; var i=m.index, a=Math.max(0,i-50), b=Math.min(text.length,i+m[0].length+60); return (a>0?'…':'')+text.slice(a,b).replace(/\s+/g,' ').trim()+(b<text.length?'…':''); }
 var RX_PLANTED=/\b(botanic(al)? gardens?|arboretum|nursery|planted|cultivated|cultivation|garden bed|street tree|revegetation|reveg|rehab(ilitation)? (site|area|planting)|amenity planting)\b/i;
 function standFromText(r){
-  var t=(r.notes||'').replace(/sub-?dominant/ig,''); if(!t) return null;
+  /* strip morphology phrases (densely tufted, dense panicle) and 'sub-dominant' so only abundance wording counts */
+  var t=(r.notes||'').replace(/sub-?dominant/ig,'').replace(/dense(ly)?[ -]?(tufted|tufts?|tussock\w*|hairy|pubescent|panicle\w*|inflorescence\w*|spike\w*|heads?|clump(ed|s)?|flower\w*|foliage|crown|canopy|leaved|branched)/ig,''); if(!t) return null;
   if(RX_LARGE.test(t)) return {lvl:3,why:snippet(t,RX_LARGE),src:'notes'};
   if(RX_FEW.test(t)) return {lvl:1,why:snippet(t,RX_FEW),src:'notes'};
   if(RX_SOME.test(t)) return {lvl:2,why:snippet(t,RX_SOME),src:'notes'};
