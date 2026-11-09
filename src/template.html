@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>QLD Native Seed Atlas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/*__LEAFLET_CSS__*/
+/*__CLUSTER_CSS__*/
+
+/* Layout: full-bleed satellite map with a species/filter rail on the left; on phones the rail folds into a bottom sheet. */
+:root{
+  --bg:#121815; --panel:#1b2420; --panel-2:#222c27; --line:#30403a; --line-2:#415449;
+  --fg:#e9ede8; --muted:#9db0a5; --faint:#6f8278;
+  --accent:#e6b73f; --accent-ink:#1b1505; --accent-soft:rgba(230,183,63,.16);
+  --good:#7fc67f; --warn:#e0a34a; --crit:#e46b5f;
+  --tierA:#e6b73f; --tierB:#86b6d0; --tierC:#8a9b92;
+  --shadow:0 10px 30px rgba(0,0,0,.45);
+  --font-ui:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-head:"Barlow Semi Condensed","Barlow",system-ui,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --radius:10px; --rail:384px; --top:58px; --tabs:56px;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#edf0ea; --panel:#ffffff; --panel-2:#f3f6f1; --line:#d7ded7; --line-2:#bfcac0;
+    --fg:#19211c; --muted:#56655b; --faint:#8a988f;
+    --accent:#9c6d06; --accent-ink:#ffffff; --accent-soft:rgba(156,109,6,.12);
+    --good:#2f8f3e; --warn:#b06f12; --crit:#c2412f;
+    --tierA:#9c6d06; --tierB:#2f6f90; --tierC:#687a70;
+    --shadow:0 10px 30px rgba(20,30,20,.18);
+    color-scheme:light;
+  }
+}
+:root[data-theme="light"]{
+  --bg:#edf0ea; --panel:#ffffff; --panel-2:#f3f6f1; --line:#d7ded7; --line-2:#bfcac0;
+  --fg:#19211c; --muted:#56655b; --faint:#8a988f;
+  --accent:#9c6d06; --accent-ink:#ffffff; --accent-soft:rgba(156,109,6,.12);
+  --good:#2f8f3e; --warn:#b06f12; --crit:#c2412f;
+  --tierA:#9c6d06; --tierB:#2f6f90; --tierC:#687a70;
+  --shadow:0 10px 30px rgba(20,30,20,.18);
+  color-scheme:light;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-ui);font-size:14px;line-height:1.4;-webkit-font-smoothing:antialiased;overflow:hidden}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h3{font-family:var(--font-head);font-weight:600;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px}
+code{font-family:var(--font-mono);font-size:12px}
+.hint{color:var(--muted);font-size:12px;margin:6px 0 0}
+.mono{font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+
+#app{display:grid;grid-template-columns:var(--rail) 1fr;grid-template-rows:var(--top) 1fr;height:100%}
+#top{grid-column:1/-1;display:flex;align-items:center;gap:14px;overflow:hidden;min-width:0;padding-block:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--panel);border-bottom:1px solid var(--line);z-index:1200;padding-top:env(safe-area-inset-top,0px)}
+.brand{min-width:0;flex:1;overflow:hidden}
+.brand-name{font-family:var(--font-head);font-weight:700;font-size:19px;letter-spacing:.01em;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand-sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.top-controls{display:flex;align-items:center;gap:8px}
+
+.seg{display:inline-flex;border:1px solid var(--line-2);border-radius:999px;overflow:hidden;background:var(--panel-2)}
+.seg button{border:0;background:transparent;padding:6px 11px;font-size:12.5px;font-weight:500;color:var(--muted);white-space:nowrap}
+.seg button.on{background:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn{border:1px solid var(--line-2);background:var(--panel-2);border-radius:8px;padding:7px 12px;font-size:13px;font-weight:500;line-height:1.1;white-space:nowrap}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent;font-weight:600}
+.btn.ghost{background:transparent}
+.btn.sm{padding:6px 10px;font-size:12.5px}
+.btn.xs{padding:3px 8px;font-size:11.5px;border-radius:6px}
+.btn.icon{width:34px;height:34px;padding:0;display:inline-grid;place-items:center;font-size:16px;border-radius:50%}
+.btn:disabled{opacity:.5;cursor:default}
+
+#side{grid-row:2;grid-column:1;display:flex;flex-direction:column;background:var(--panel);border-right:1px solid var(--line);min-height:0;z-index:1100}
+#tabs{display:flex;border-bottom:1px solid var(--line);flex:0 0 auto}
+.tab{flex:1;border:0;background:transparent;padding:11px 6px;font-family:var(--font-head);font-weight:600;font-size:13.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid transparent}
+.tab.on{color:var(--fg);border-bottom-color:var(--accent)}
+.tab.mobile-only{display:none}
+.pane{display:none;flex:1;min-height:0;overflow:auto;padding-block:12px 24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:16px}
+.pane.on{display:block}
+
+.row-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+input[type=search],input[type=text],select{width:100%;background:var(--panel-2);border:1px solid var(--line-2);border-radius:8px;padding:8px 10px;color:var(--fg)}
+input[type=search]::placeholder,input[type=text]::placeholder{color:var(--faint)}
+.grp{border-top:1px solid var(--line);margin-top:8px}
+.grp summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 0;cursor:pointer;font-family:var(--font-head);font-weight:600;font-size:14px;letter-spacing:.03em}
+.grp summary::-webkit-details-marker{display:none}
+.grp summary::before{content:"▸";color:var(--faint);margin-right:6px;font-size:12px}
+.grp[open] summary::before{content:"▾"}
+.grp-meta{font-family:var(--font-ui);font-weight:500;font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center}
+.grp-meta button{border:0;background:transparent;color:var(--accent);padding:2px 4px;font-size:12px;font-weight:600}
+.sp{display:grid;grid-template-columns:18px 12px 1fr auto auto;align-items:center;gap:8px;padding:6px 0;border-top:1px solid color-mix(in srgb,var(--line) 55%,transparent);cursor:pointer}
+.sp:first-of-type{border-top:0}
+.sp input{margin:0;width:16px;height:16px;accent-color:var(--accent)}
+.dot{width:12px;height:12px;border-radius:50%;background:var(--c,var(--faint));border:1px solid rgba(0,0,0,.45);box-shadow:0 0 0 1px rgba(255,255,255,.08)}
+.names{min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.names i{font-style:italic;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.names small{color:var(--muted);font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tier{font-family:var(--font-head);font-weight:700;font-size:11px;width:20px;height:20px;border-radius:5px;display:grid;place-items:center;color:var(--bg)}
+.tier.tA{background:var(--tierA)}.tier.tB{background:var(--tierB)}.tier.tC{background:var(--tierC)}
+.cnt{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted);min-width:48px;text-align:right}
+.cnt.err{color:var(--crit)}
+.cnt.busy::after{content:"";display:inline-block;width:10px;height:10px;border:2px solid var(--line-2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-1px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sp.hidden{display:none}
+.add-sp{display:flex;gap:6px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.add-sp input{flex:1;min-width:0}
+
+.f{margin-top:14px}
+.f>label{display:block;font-family:var(--font-head);font-weight:600;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chip{border:1px solid var(--line-2);background:var(--panel-2);border-radius:999px;padding:4px 0;width:32px;text-align:center;font-size:12px;font-weight:600;color:var(--muted)}
+.chip.on{background:var(--accent);color:var(--accent-ink);border-color:transparent}
+input[type=range]{width:100%;accent-color:var(--accent);margin-top:8px}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:var(--panel-2);border:1px solid var(--line);border-radius:var(--radius);padding:10px 10px 8px}
+.stat b{display:block;font-family:var(--font-head);font-weight:700;font-size:22px;line-height:1;font-variant-numeric:tabular-nums}
+.stat span{font-size:11.5px;color:var(--muted)}
+#pheno{width:100%;height:96px;display:block}
+#pheno rect{fill:var(--accent);cursor:pointer}
+#pheno rect.off{fill:var(--line-2)}
+#pheno text{fill:var(--muted);font-family:var(--font-mono);font-size:10px}
+.hot{display:grid;grid-template-columns:22px 1fr auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+.hot .rank{font-family:var(--font-head);font-weight:700;color:var(--muted)}
+.hot .what{min-width:0;font-size:12.5px;line-height:1.25}
+.hot .what b{font-variant-numeric:tabular-nums}
+.hot .what small{display:block;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rs{display:grid;grid-template-columns:12px 1fr 60px auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+.rs .names{min-width:0}
+.rs .spark{height:22px;width:60px}
+.rs .spark rect{fill:var(--c,var(--accent))}
+.rs .acts{display:flex;gap:4px}
+.rs .nums{font-family:var(--font-mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+#map{grid-row:2;grid-column:2;min-width:0;min-height:0;background:#0b0f0d}
+.leaflet-container{font-family:var(--font-ui)}
+.leaflet-control-zoom a{background:var(--panel)!important;color:var(--fg)!important;border-color:var(--line)!important}
+.leaflet-control-attribution{background:color-mix(in srgb,var(--panel) 85%,transparent)!important;color:var(--muted)!important;font-size:10px}
+.leaflet-control-attribution a{color:var(--muted)!important}
+.qc{background:transparent;border:0}
+.qc>div{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--qc,rgba(230,183,63,.9));color:#111;font-family:var(--font-head);font-weight:700;font-size:13px;border:2px solid rgba(255,255,255,.85);box-shadow:0 2px 8px rgba(0,0,0,.5)}
+.qc-m>div{width:46px;height:46px;font-size:14px}
+.qc-l>div{width:54px;height:54px;font-size:15px}
+.qp .leaflet-popup-content-wrapper{background:var(--panel);color:var(--fg);border-radius:12px;box-shadow:var(--shadow);padding:0;overflow:hidden}
+.qp .leaflet-popup-content{margin:0;width:auto!important;min-width:250px;max-width:300px;line-height:1.35}
+.qp .leaflet-popup-tip{background:var(--panel)}
+.qp .leaflet-popup-close-button{color:var(--fg);top:6px;right:6px;background:rgba(0,0,0,.35);border-radius:50%;width:24px;height:24px;line-height:22px}
+.pp-img{display:block;position:relative;background:var(--panel-2);min-height:40px}
+.pp-img img{display:block;width:100%;max-height:220px;object-fit:cover}
+.pp-img.broken img{display:none}
+.pp-img.broken::after{content:"Photo unavailable · open the record";display:block;padding:12px;font-size:12px;color:var(--muted)}
+.pp-n{position:absolute;right:8px;bottom:8px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;font-weight:600;padding:2px 7px;border-radius:999px}
+.pp-body{padding:10px 12px 12px}
+.pp-sci{font-style:italic;font-weight:600;font-size:15px}
+.pp-com{color:var(--muted);font-size:12.5px}
+.pp-meta{font-size:12px;color:var(--muted);margin-top:4px}
+.pp-coords{display:flex;align-items:center;gap:8px;margin-top:8px}
+.pp-links{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:8px;font-size:12.5px;font-weight:600}
+.me{background:transparent;border:0}
+.me>div{width:16px;height:16px;border-radius:50%;background:#3b9bff;border:3px solid #fff;box-shadow:0 0 0 3px rgba(59,155,255,.35)}
+
+#toast{position:fixed;top:calc(var(--top) + 10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:2000;background:var(--panel);border:1px solid var(--line-2);border-radius:12px;box-shadow:var(--shadow);padding:10px 12px;width:min(420px,calc(100vw - 32px));font-size:12.5px}
+#toast .t-row{display:flex;justify-content:space-between;gap:10px;align-items:center}
+#toast .t-list{margin-top:6px;display:flex;flex-direction:column;gap:3px;color:var(--muted);font-family:var(--font-mono);font-size:11.5px;font-variant-numeric:tabular-nums}
+#toast .bar{height:3px;background:var(--line);border-radius:2px;margin-top:8px;overflow:hidden}
+#toast .bar i{display:block;height:100%;background:var(--accent);width:0%;transition:width .2s}
+#toast.err{border-color:var(--crit)}
+
+@media (max-width:760px){
+  :root{--top:52px}
+  #app{grid-template-columns:1fr}
+  #map{grid-column:1}
+  .brand-name{font-size:17px}
+  #top .seg button{padding:6px 8px;font-size:12px}
+  #btnFit{display:none}
+  #top .seg{display:none}
+  #baseField{display:block}
+  #side{position:fixed;left:0;right:0;bottom:0;top:auto;height:min(64vh,540px);flex-direction:column-reverse;overflow:hidden;border-right:0;border-top:1px solid var(--line);border-radius:14px 14px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.35);transition:height .25s ease;padding-bottom:env(safe-area-inset-bottom,0px)}
+  #side.closed{height:calc(var(--tabs) + env(safe-area-inset-bottom,0px))}
+  #tabs{border-bottom:0;border-top:1px solid var(--line);height:var(--tabs)}
+  .tab{padding:0;font-size:12.5px}
+  .tab.mobile-only{display:block}
+  .pane{padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .leaflet-bottom{bottom:calc(var(--tabs) + env(safe-area-inset-bottom,0px))}
+  .leaflet-top.leaflet-right{top:6px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="top">
+    <div class="brand">
+      <div class="brand-name">QLD Native Seed Atlas</div>
+      <div class="brand-sub" id="status">Photo-backed ALA records · Queensland</div>
+    </div>
+    <div class="top-controls">
+      <div class="seg" role="group" aria-label="Base layer">
+        <button data-base="sat" class="on" type="button">Satellite</button>
+        <button data-base="satlabels" type="button">+ Labels</button>
+        <button data-base="streets" type="button">Streets</button>
+      </div>
+      <button id="btnLocate" class="btn icon" type="button" title="Show my location" aria-label="Show my location">◎</button>
+      <button id="btnFit" class="btn icon" type="button" title="Zoom to shown points" aria-label="Zoom to shown points">⤢</button>
+    </div>
+  </header>
+
+  <aside id="side">
+    <nav id="tabs" aria-label="Panels">
+      <button class="tab mobile-only" data-tab="map" type="button">Map</button>
+      <button class="tab on" data-tab="species" type="button">Species</button>
+      <button class="tab" data-tab="filters" type="button">Filters</button>
+      <button class="tab" data-tab="results" type="button">Results</button>
+    </nav>
+
+    <section id="pane-species" class="pane on" aria-label="Species">
+      <input id="spSearch" type="search" placeholder="Find species or common name" autocomplete="off">
+      <div class="row-actions">
+        <button id="btnLoadA" class="btn sm primary" type="button">Load tier A grasses</button>
+        <button id="btnCountAll" class="btn sm ghost" type="button">Count all</button>
+        <button id="btnClearAll" class="btn sm ghost" type="button">Clear map</button>
+      </div>
+      <p class="hint">Tick a species to pull every Queensland record that has a photo. Tier: A staple rehab/market demand, B regular, C niche.</p>
+      <div id="spList"></div>
+      <div class="add-sp">
+        <input id="addName" type="text" placeholder="Add a species (scientific name)" autocomplete="off">
+        <button id="btnAdd" class="btn sm" type="button">Add</button>
+      </div>
+    </section>
+
+    <section id="pane-filters" class="pane" aria-label="Filters">
+      <div class="f" id="baseField" style="display:none;margin-top:4px">
+        <label>Base map</label>
+        <div class="seg" role="group" aria-label="Base layer (mobile)">
+          <button data-base="sat" class="on" type="button">Satellite</button>
+          <button data-base="satlabels" type="button">+ Labels</button>
+          <button data-base="streets" type="button">Streets</button>
+        </div>
+      </div>
+      <div class="f">
+        <label for="fYear">Years</label>
+        <select id="fYear">
+          <option value="0">All years</option>
+          <option value="2010">2010 onward</option>
+          <option value="2015">2015 onward</option>
+          <option value="2020">2020 onward</option>
+          <option value="2024">2024 onward</option>
+        </select>
+      </div>
+      <div class="f">
+        <label>Month photographed</label>
+        <div class="chips" id="fMonths"></div>
+        <p class="hint">Proxy for when the plant is conspicuous: flowering or seeding. Leave empty for all months.</p>
+      </div>
+      <div class="f">
+        <label>Record type</label>
+        <div class="seg" id="fSrc">
+          <button data-src="all" class="on" type="button">All</button>
+          <button data-src="inat" type="button">iNaturalist</button>
+          <button data-src="herb" type="button">Herbarium</button>
+          <button data-src="other" type="button">Other</button>
+        </div>
+      </div>
+      <div class="f">
+        <label>Data provider</label>
+        <div class="seg" id="fProv">
+          <button data-prov="gbif" class="on" type="button">GBIF</button>
+          <button data-prov="ala" type="button">ALA</button>
+        </div>
+        <p class="hint" id="provHint">GBIF: research-grade iNaturalist plus imaged herbarium specimens, filtered to a Queensland polygon. ALA adds unconfirmed iNaturalist sightings. Applies to species loaded from now on.</p>
+      </div>
+      <div class="f">
+        <label for="fUnc">Coordinate uncertainty</label>
+        <select id="fUnc">
+          <option value="0">Any (unknown kept)</option>
+          <option value="1000">1 km or better</option>
+          <option value="250">250 m or better</option>
+          <option value="50">50 m or better</option>
+        </select>
+      </div>
+      <div class="f">
+        <label>Radius from a point</label>
+        <div class="row-actions" style="margin-top:0">
+          <button id="btnRadius" class="btn sm" type="button">Tap the map to set centre</button>
+          <button id="btnRadiusMe" class="btn sm ghost" type="button">Use my location</button>
+          <button id="btnRadiusClear" class="btn sm ghost" type="button">Clear</button>
+        </div>
+        <input type="range" id="fRadius" min="5" max="400" step="5" value="50" aria-label="Radius in kilometres">
+        <div id="radiusLabel" class="hint">50 km · no centre set</div>
+      </div>
+      <div class="f">
+        <label for="fCap">Load cap per species</label>
+        <select id="fCap">
+          <option value="2000">2,000 records</option>
+          <option value="5000" selected>5,000 records</option>
+          <option value="0">All records</option>
+        </select>
+        <p class="hint">Applies to species loaded after you change it. Big eucalypts can run past 5,000.</p>
+      </div>
+    </section>
+
+    <section id="pane-results" class="pane" aria-label="Results">
+      <div class="stats">
+        <div class="stat"><b id="stShown">0</b><span>points shown</span></div>
+        <div class="stat"><b id="stLoaded">0</b><span>loaded</span></div>
+        <div class="stat"><b id="stSpecies">0</b><span>species</span></div>
+      </div>
+      <h3>Month photographed</h3>
+      <svg id="pheno" viewBox="0 0 360 96" preserveAspectRatio="none" role="img" aria-label="Records by month"></svg>
+      <p class="hint">Tap a bar to filter that month. Covers every point currently shown.</p>
+      <h3>Hotspots · 10 km cells</h3>
+      <div id="hotspots"><p class="hint">Load a species to rank the densest cells.</p></div>
+      <h3>Loaded species</h3>
+      <div id="resList"></div>
+      <div class="row-actions">
+        <button id="btnCsv" class="btn sm" type="button">Export CSV</button>
+        <button id="btnGeo" class="btn sm" type="button">Export GeoJSON</button>
+      </div>
+      <p class="hint">Records and photos via GBIF or the Atlas of Living Australia (iNaturalist observers, Queensland Herbarium and other contributors). Each photo carries its own licence and observer; open the record before reusing one. Points are sightings, not confirmed stands: verify by drone and ground before harvest, and check Nature Conservation (Plants) Regulation licensing and landholder consent per tenure.</p>
+    </section>
+  </aside>
+
+  <main id="map" aria-label="Map"></main>
+
+  <div id="toast" hidden>
+    <div class="t-row"><strong id="tTitle">Loading</strong><button id="btnStop" class="btn xs" type="button">Stop</button></div>
+    <div class="t-list" id="tList"></div>
+    <div class="bar"><i id="tBar"></i></div>
+  </div>
+</div>
+
+<script>
+/*__LEAFLET_JS__*/
+</script>
+<script>
+/*__CLUSTER_JS__*/
+</script>
+<script>
+/*__SPECIES_JS__*/
+</script>
+<script>
+(function(){
+'use strict';
+var ALA_SEARCH='https://biocache-ws.ala.org.au/ws/occurrences/search';
+var ALA_IMG='https://images.ala.org.au/image/';
+var GBIF='https://api.gbif.org/v1/';
+var GBIF_PAGE=300, GBIF_MAX=100000, ALA_PAGE=1000;
+/* Queensland outline (lon lat, anticlockwise) used as the GBIF geometry filter; ALA uses its own state field. */
+var QLD_WKT='POLYGON((138 -29,148.95 -29,149.6 -28.85,150.3 -28.55,150.75 -28.9,151.17 -28.87,151.5 -28.98,151.93 -28.92,152.1 -28.6,152.5 -28.25,153.1 -28.27,153.55 -28.165,154.3 -28.165,156 -24.5,156 -18,152 -12,150 -10.5,147 -10.5,144.6 -10.3,144.3 -9.3,138 -9.3,138 -29))';
+var QLD_BOUNDS=[[-29.2,137.9],[-9.0,153.7]];
+var LS_KEY='qld-native-seed-atlas-v2';
+var INAT_ALA='dr1411', INAT_GBIF='50c9509d-22c7-4a22-a47d-8c48425ef4a7';
+var HERBARIA={BRI:'Queensland Herbarium (BRI)',CANB:'Australian National Herbarium (CANB)',NSW:'National Herbarium of NSW',MEL:'National Herbarium of Victoria',JCT:'James Cook University Herbarium',DNA:'Northern Territory Herbarium',AD:'State Herbarium of South Australia',PERTH:'Western Australian Herbarium',HO:'Tasmanian Herbarium',iNaturalist:'iNaturalist'};
+var MONTH_L=['J','F','M','A','M','J','J','A','S','O','N','D'];
+var MONTH_F=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var FL='uuid,scientificName,vernacularName,decimalLatitude,decimalLongitude,eventDate,year,month,dataResourceUid,dataResourceName,basisOfRecord,license,recordedBy,image,images,imageUrl,thumbnailUrl,smallImageUrl,largeImageUrl,coordinateUncertaintyInMeters,locality,stateProvince';
+
+var $=function(s){return document.querySelector(s);};
+var $$=function(s){return Array.prototype.slice.call(document.querySelectorAll(s));};
+function fmt(n){return (n==null||isNaN(n))?'—':Number(n).toLocaleString('en-AU');}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function colorFor(i){var h=(i*137.508)%360;return 'hsl('+h.toFixed(0)+' 85% 62%)';}
+function isMobile(){return window.matchMedia('(max-width:760px)').matches;}
+function hav(a1,o1,a2,o2){var R=6371,d=Math.PI/180,dA=(a2-a1)*d,dO=(o2-o1)*d;var x=Math.sin(dA/2)*Math.sin(dA/2)+Math.cos(a1*d)*Math.cos(a2*d)*Math.sin(dO/2)*Math.sin(dO/2);return 2*R*Math.asin(Math.sqrt(x));}
+
+/* ---------- state ---------- */
+var reg=new Map();
+function mkSp(def,i){return {def:def,idx:i,color:colorFor(i),loaded:false,loading:false,visible:false,total:null,recs:[],markers:null,error:null,progress:null,capped:false,shown:0};}
+SPECIES.forEach(function(d,i){reg.set(d.n,mkSp(d,i));});
+var filters={year:0,months:new Set(),src:'all',unc:0,cap:5000,prov:'gbif'};
+var radius=null, radiusCircle=null, radiusArming=false;
+var base='sat', activeTab='species', stopFlag=false, meMarker=null;
+
+function save(){
+  try{
+    var o={sel:[],custom:[],counts:{},match:matchCache,filters:{year:filters.year,months:Array.from(filters.months),src:filters.src,unc:filters.unc,cap:filters.cap,prov:filters.prov},radius:radius,base:base,tab:activeTab};
+    reg.forEach(function(sp){ if(sp.visible)o.sel.push(sp.def.n); if(sp.def.g==='custom')o.custom.push(sp.def); if(sp.total!=null)o.counts[sp.def.n]=sp.total; });
+    localStorage.setItem(LS_KEY,JSON.stringify(o));
+  }catch(e){}
+}
+function restore(){ try{return JSON.parse(localStorage.getItem(LS_KEY)||'null');}catch(e){return null;} }
+
+/* ---------- map ---------- */
+var map=L.map('map',{zoomControl:false,preferCanvas:true,renderer:L.canvas({padding:0.5}),worldCopyJump:false,attributionControl:true,minZoom:4,maxZoom:20});
+L.control.zoom({position:'topright'}).addTo(map);
+map.createPane('labels'); map.getPane('labels').style.zIndex=350; map.getPane('labels').style.pointerEvents='none';
+var ESRI='Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community';
+var layerSat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,maxNativeZoom:18,attribution:ESRI});
+var layerLabels=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,maxNativeZoom:18,pane:'labels'});
+var layerStreets=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'});
+map.fitBounds(QLD_BOUNDS,{padding:[10,10]});
+function setBase(b){
+  base=b;
+  [layerSat,layerLabels,layerStreets].forEach(function(l){ if(map.hasLayer(l)) map.removeLayer(l); });
+  if(b==='streets'){ layerStreets.addTo(map); } else { layerSat.addTo(map); if(b==='satlabels') layerLabels.addTo(map); }
+  $$('[data-base]').forEach(function(x){ x.classList.toggle('on',x.dataset.base===b); });
+  save();
+}
+$$('[data-base]').forEach(function(x){ x.addEventListener('click',function(){ setBase(x.dataset.base); }); });
+
+var cluster=L.markerClusterGroup({
+  chunkedLoading:true, chunkInterval:120, chunkDelay:30,
+  maxClusterRadius:46, disableClusteringAtZoom:13, spiderfyOnMaxZoom:true,
+  showCoverageOnHover:false, removeOutsideVisibleBounds:true, animate:false,
+  iconCreateFunction:function(c){
+    var n=c.getChildCount(), s=n<100?'s':(n<1000?'m':'l');
+    var kids=c.getAllChildMarkers(), first=kids[0]&&kids[0].rec?kids[0].rec.sp:null, same=true;
+    for(var i=1;i<kids.length&&i<400;i++){ if(!kids[i].rec||kids[i].rec.sp!==first){same=false;break;} }
+    var col=(same&&first)?first.color:'rgba(230,183,63,.92)';
+    return L.divIcon({html:'<div style="--qc:'+col+'"><span>'+fmt(n)+'</span></div>',className:'qc qc-'+s,iconSize:L.point(40,40)});
+  }
+});
+map.addLayer(cluster);
+var popup=L.popup({maxWidth:300,minWidth:250,className:'qp',autoPanPaddingTopLeft:[10,70],autoPanPaddingBottomRight:[10,isMobile()?70:10]});
+map.on('popupopen',function(e){
+  var el=e.popup.getElement(); if(!el) return;
+  var b=el.querySelector('[data-copy]'); if(b){ b.addEventListener('click',function(){ var t=b.getAttribute('data-copy'); (navigator.clipboard&&navigator.clipboard.writeText?navigator.clipboard.writeText(t):Promise.reject()).then(function(){b.textContent='Copied';},function(){ var r=document.createRange(); r.selectNodeContents(b.previousElementSibling); var s=getSelection(); s.removeAllRanges(); s.addRange(r); }); }); }
+});
+
+/* ---------- shared helpers ---------- */
+function getJson(url){
+  return new Promise(function(res,rej){
+    try{ fetch(url,{headers:{'Accept':'application/json'}}).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status+' from '+(/gbif/.test(url)?'GBIF':'ALA')); return r.json(); }).then(res,rej); }
+    catch(e){ rej(e); }
+  });
+}
+function parseDate(v,y,m){
+  var d=null;
+  if(typeof v==='number') d=new Date(v);
+  else if(typeof v==='string'&&v){ v=v.split('/')[0]; d=/^-?\d+$/.test(v)?new Date(+v):new Date(v); }
+  if(d&&isNaN(d.getTime())) d=null;
+  var yy=d?d.getFullYear():(+y||null), mm=d?d.getMonth()+1:(+m||null);
+  return {date:d,y:yy,m:mm};
+}
+function licLabel(s){
+  if(!s) return '';
+  var m=String(s).match(/creativecommons\.org\/(?:licenses|publicdomain)\/([a-z\-]+)\/(\d(?:\.\d)?)/i);
+  if(m) return (m[1]==='zero'?'CC0':'CC '+m[1].toUpperCase())+' '+m[2];
+  return String(s).replace(/^CC[-_ ]/,'CC ').replace(/_/g,' ');
+}
+function isInfra(name){ return /\b(subsp|ssp|var|f|forma|subvar)\.?\s/i.test(name)||name.trim().split(/\s+/).length>2; }
+
+/* ---------- GBIF (primary) ---------- */
+var matchCache={};
+function gbifMatch(name){
+  if(matchCache[name]) return Promise.resolve(matchCache[name]);
+  return getJson(GBIF+'species/match?'+new URLSearchParams({name:name,kingdom:'Plantae'}).toString()).then(function(j){
+    var bad=!j||!j.usageKey||!j.matchType||j.matchType==='NONE'||j.matchType==='HIGHERRANK';
+    if(bad) throw new Error('No GBIF name match for "'+name+'"'+(j&&j.matchType==='HIGHERRANK'?' (only the genus matched)':''));
+    var key=(j.speciesKey&&!isInfra(name))?j.speciesKey:(j.acceptedUsageKey||j.usageKey);
+    var m={key:key,name:(j.status==='SYNONYM'&&j.species)?j.species:(j.canonicalName||name),status:j.status||'',conf:j.confidence||0};
+    matchCache[name]=m; return m;
+  });
+}
+function gbifUrl(key,offset,limit){
+  var p=new URLSearchParams({taxonKey:key,mediaType:'StillImage',hasCoordinate:'true',hasGeospatialIssue:'false',occurrenceStatus:'PRESENT',geometry:QLD_WKT,limit:limit,offset:offset});
+  return GBIF+'occurrence/search?'+p.toString();
+}
+function gbifImages(o){
+  var m=(o.media||[]).filter(function(x){ return x&&x.identifier&&(!x.type||x.type==='StillImage'); });
+  if(!m.length) return null;
+  var id=m[0].identifier, thumb=id, large=id;
+  if(/inaturalist/.test(id)&&/\/original\./.test(id)){ thumb=id.replace('/original.','/medium.'); }
+  else if(/images\.ala\.org\.au/.test(id)){ var q=id.match(/imageId=([^&]+)/); if(q){ thumb=ALA_IMG+'proxyImageThumbnailLarge?imageId='+q[1]; large=ALA_IMG+'proxyImage?imageId='+q[1]; } }
+  return {thumb:thumb,large:large,n:m.length,lic:m[0].license||'',by:m[0].creator||m[0].rightsHolder||''};
+}
+function normGbif(o,sp){
+  var lat=+o.decimalLatitude, lng=+o.decimalLongitude;
+  if(!isFinite(lat)||!isFinite(lng)||(lat===0&&lng===0)) return null;
+  var img=gbifImages(o); if(!img) return null;
+  var d=parseDate(o.eventDate,o.year,o.month);
+  var kind=(o.datasetKey===INAT_GBIF||o.institutionCode==='iNaturalist')?'inat':(/SPECIMEN/.test(o.basisOfRecord||'')?'herb':'other');
+  var src=o.datasetName||HERBARIA[o.institutionCode]||o.institutionCode||'GBIF';
+  if(kind==='inat') src='iNaturalist';
+  var link='https://www.gbif.org/occurrence/'+encodeURIComponent(o.gbifID||o.key||'');
+  var ref=(o.references&&/^https?:/.test(o.references))?o.references:null;
+  return {id:'g'+(o.gbifID||o.key||(lat+','+lng+','+(o.eventDate||''))),sp:sp,lat:lat,lng:lng,date:d.date,y:d.y,m:d.m,
+    sci:o.species||o.acceptedScientificName||o.scientificName||sp.def.n,src:src,kind:kind,by:o.recordedBy||img.by||'',lic:licLabel(o.license||img.lic),
+    unc:(+o.coordinateUncertaintyInMeters)||null,loc:o.locality||o.verbatimLocality||'',thumb:img.thumb,large:img.large,nimg:img.n,link:link,ref:ref,prov:'gbif'};
+}
+function loadGbif(sp,recs,seen){
+  var cap=filters.cap||GBIF_MAX, total=0, done=0;
+  function ingest(j){ (j.results||[]).forEach(function(o){ var r=normGbif(o,sp); if(r&&!seen[r.id]){ seen[r.id]=1; recs.push(r); } }); }
+  return gbifMatch(sp.def.n).then(function(m){
+    sp.match=m;
+    return getJson(gbifUrl(m.key,0,GBIF_PAGE));
+  }).then(function(j){
+    total=j.count||0; sp.total=total; ingest(j); done=GBIF_PAGE;
+    var target=Math.min(total,cap,GBIF_MAX), offsets=[];
+    for(var o=GBIF_PAGE;o<target;o+=GBIF_PAGE) offsets.push(o);
+    sp.progress=[recs.length,target]; showProgress();
+    var i=0;
+    function worker(){
+      if(i>=offsets.length||stopFlag) return Promise.resolve();
+      var off=offsets[i++];
+      return getJson(gbifUrl(sp.match.key,off,GBIF_PAGE)).then(function(jj){ ingest(jj); done+=GBIF_PAGE; sp.progress=[recs.length,target]; showProgress(); return worker(); });
+    }
+    return Promise.all([worker(),worker(),worker()]).then(function(){ sp.capped=Math.min(done,target)<total; });
+  });
+}
+
+/* ---------- ALA (secondary) ---------- */
+function alaUrl(q,start,pageSize){
+  var p=new URLSearchParams();
+  p.set('q',q); p.append('fq','state:"Queensland"'); p.append('fq','multimedia:"Image"');
+  p.set('pageSize',pageSize==null?ALA_PAGE:pageSize); p.set('start',start); p.set('startIndex',start);
+  return ALA_SEARCH+'?'+p.toString();
+}
+function alaImages(o){
+  var thumb=o.smallImageUrl||o.thumbnailUrl||null, large=o.largeImageUrl||o.imageUrl||null;
+  var id=o.image||(Array.isArray(o.images)&&o.images.length?o.images[0]:null)||null;
+  if(id&&/^https?:/.test(id)){ if(!large) large=id; id=null; }
+  if(!thumb&&id) thumb=ALA_IMG+'proxyImageThumbnailLarge?imageId='+encodeURIComponent(id);
+  if(!large&&id) large=ALA_IMG+'proxyImage?imageId='+encodeURIComponent(id);
+  if(!thumb&&large) thumb=large;
+  return thumb?{thumb:thumb,large:large||thumb,n:Array.isArray(o.images)?o.images.length:1}:null;
+}
+function normAla(o,sp){
+  var lat=+o.decimalLatitude, lng=+o.decimalLongitude;
+  if(!isFinite(lat)||!isFinite(lng)||(lat===0&&lng===0)) return null;
+  var img=alaImages(o); if(!img) return null;
+  var d=parseDate(o.eventDate,o.year,o.month);
+  var by=o.recordedBy; if(Array.isArray(by)) by=by.join(', ');
+  var kind=o.dataResourceUid===INAT_ALA?'inat':(/specimen/i.test(o.basisOfRecord||'')?'herb':'other');
+  return {id:'a'+(o.uuid||(lat+','+lng+','+(o.eventDate||''))),sp:sp,lat:lat,lng:lng,date:d.date,y:d.y,m:d.m,
+    sci:o.scientificName||sp.def.n,src:o.dataResourceName||'ALA',kind:kind,by:by||'',lic:licLabel(o.license||''),
+    unc:(+o.coordinateUncertaintyInMeters)||null,loc:o.locality||'',thumb:img.thumb,large:img.large,nimg:img.n,
+    link:o.uuid?'https://biocache.ala.org.au/occurrences/'+encodeURIComponent(o.uuid):null,ref:null,prov:'ala'};
+}
+function loadAla(sp,recs,seen){
+  var cap=filters.cap||Infinity, q='taxa:"'+sp.def.n+'"', total=0, start=ALA_PAGE;
+  function ingest(j){ (j.occurrences||[]).forEach(function(o){ var r=normAla(o,sp); if(r&&!seen[r.id]){ seen[r.id]=1; recs.push(r); } }); }
+  return getJson(alaUrl(q,0)).then(function(j){
+    total=j.totalRecords||0; sp.total=total; ingest(j);
+    var target=Math.min(total,cap);
+    function next(){
+      sp.progress=[recs.length,target]; showProgress();
+      if(start>=target||stopFlag) return Promise.resolve();
+      return getJson(alaUrl(q,start)).then(function(jj){ if(!jj.occurrences||!jj.occurrences.length) return; ingest(jj); start+=ALA_PAGE; return next(); });
+    }
+    return next().then(function(){ sp.capped=Math.min(start,target)<total; });
+  });
+}
+
+/* ---------- loader ---------- */
+var queue=[], active=0;
+function enqueue(sp){ if(sp.loaded||sp.loading||queue.indexOf(sp)>=0) return; queue.push(sp); pump(); }
+function pump(){
+  while(active<2&&queue.length){ var sp=queue.shift(); active++; loadSpecies(sp).then(function(){active--;pump();},function(){active--;pump();}); }
+  if(!active&&!queue.length) stopFlag=false;
+  showProgress();
+}
+function loadSpecies(sp){
+  sp.loading=true; sp.error=null; sp.progress=[0,sp.total||0]; sp.prov=filters.prov; renderRow(sp); showProgress();
+  var recs=[], seen={};
+  var run=sp.prov==='ala'?loadAla(sp,recs,seen):loadGbif(sp,recs,seen);
+  return run.then(function(){ sp.recs=recs; sp.loaded=true; })
+  .catch(function(e){ sp.error=(e&&e.message)||'Request failed'; if(recs.length){ sp.recs=recs; sp.loaded=true; sp.capped=true; } })
+  .then(function(){ sp.loading=false; sp.progress=null; sp.markers=null; renderRow(sp); applyFilters(); save(); showProgress(); });
+}
+function countOne(sp){
+  if(filters.prov==='ala') return getJson(alaUrl('taxa:"'+sp.def.n+'"',0,0)).then(function(j){ return j.totalRecords||0; });
+  return gbifMatch(sp.def.n).then(function(m){ sp.match=m; return getJson(gbifUrl(m.key,0,0)); }).then(function(j){ return j.count||0; });
+}
+function countAll(){
+  var todo=[]; reg.forEach(function(sp){ if(!sp.loaded&&sp.total==null) todo.push(sp); });
+  var i=0, running=0; $('#btnCountAll').disabled=true;
+  function go(){
+    while(running<4&&i<todo.length){ (function(sp){ running++; countOne(sp).then(function(n){ sp.total=n; },function(e){ sp.total=null; sp.error=(e&&e.message)||'Count failed'; }).then(function(){ running--; renderRow(sp); go(); }); })(todo[i++]); }
+    if(!running&&i>=todo.length){ $('#btnCountAll').disabled=false; save(); }
+  }
+  go();
+}
+
+/* ---------- markers, filters ---------- */
+function ensureMarkers(sp){
+  if(sp.markers) return;
+  sp.markers=sp.recs.map(function(r){
+    var mk=L.circleMarker([r.lat,r.lng],{radius:6,weight:1,color:'rgba(0,0,0,.75)',fillColor:sp.color,fillOpacity:.95});
+    mk.rec=r;
+    mk.on('click',function(){ popup.setLatLng([r.lat,r.lng]).setContent(popupHtml(r)); map.openPopup(popup); if(isMobile()) setTab('map'); });
+    return mk;
+  });
+}
+function passes(r,skipMonth){
+  if(filters.year&&(!r.y||r.y<filters.year)) return false;
+  if(!skipMonth&&filters.months.size&&!(r.m&&filters.months.has(r.m))) return false;
+  if(filters.src!=='all'&&r.kind!==filters.src) return false;
+  if(filters.unc&&r.unc&&r.unc>filters.unc) return false;
+  if(radius&&hav(r.lat,r.lng,radius.lat,radius.lng)>radius.km) return false;
+  return true;
+}
+var shownRecs=[];
+function applyFilters(){
+  var layers=[], shown=0, loaded=0, nsp=0; shownRecs=[];
+  reg.forEach(function(sp){
+    if(!sp.visible||!sp.loaded) return;
+    ensureMarkers(sp); nsp++; loaded+=sp.recs.length; sp.shown=0;
+    sp.markers.forEach(function(mk){ if(passes(mk.rec,false)){ layers.push(mk); shownRecs.push(mk.rec); sp.shown++; } });
+    shown+=sp.shown;
+  });
+  cluster.clearLayers(); if(layers.length) cluster.addLayers(layers);
+  $('#stShown').textContent=fmt(shown); $('#stLoaded').textContent=fmt(loaded); $('#stSpecies').textContent=fmt(nsp);
+  $('#status').textContent=nsp?(fmt(shown)+' photo points · '+nsp+' species · Queensland'):'Photo-backed ALA records · Queensland';
+  renderPheno(); renderHotspots(); renderResults();
+}
+function popupHtml(r){
+  var date=r.date?r.date.toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}):(r.y?String(r.y)+(r.m?' · '+MONTH_F[r.m-1]:''):'Date unknown');
+  var c=r.lat.toFixed(5)+', '+r.lng.toFixed(5);
+  var links='';
+  if(r.link) links+='<a href="'+esc(r.link)+'" target="_blank" rel="noopener">'+(r.prov==='ala'?'ALA record':'GBIF record')+'</a>';
+  if(r.ref&&/inaturalist/.test(r.ref)) links+='<a href="'+esc(r.ref)+'" target="_blank" rel="noopener">iNaturalist</a>';
+  links+='<a href="https://www.google.com/maps/search/?api=1&query='+r.lat+'%2C'+r.lng+'" target="_blank" rel="noopener">Google Maps</a>';
+  links+='<a href="https://maps.apple.com/?ll='+r.lat+','+r.lng+'&q='+encodeURIComponent(r.sci)+'" target="_blank" rel="noopener">Apple Maps</a>';
+  var more=r.nimg>1?'<span class="pp-n">+'+(r.nimg-1)+' more</span>':'';
+  return '<div class="pp"><a class="pp-img" href="'+esc(r.large||r.thumb)+'" target="_blank" rel="noopener"><img src="'+esc(r.thumb)+'" alt="Photo of '+esc(r.sci)+'" loading="lazy" onerror="this.parentNode.classList.add(\'broken\')">'+more+'</a>'+
+    '<div class="pp-body"><div class="pp-sci">'+esc(r.sci)+'</div><div class="pp-com">'+esc(r.sp.def.c||'')+(r.sp.def.h?' · '+esc(r.sp.def.h):'')+'</div>'+
+    '<div class="pp-meta">'+esc(date)+(r.src?' · '+esc(r.src):'')+(r.by?' · '+esc(r.by):'')+'</div>'+
+    '<div class="pp-meta">'+esc(r.lic||'Licence not stated')+(r.unc?' · ±'+fmt(Math.round(r.unc))+' m':'')+(r.loc?' · '+esc(r.loc):'')+'</div>'+
+    '<div class="pp-coords"><code>'+c+'</code><button class="btn xs" type="button" data-copy="'+c+'">Copy</button></div>'+
+    '<div class="pp-links">'+links+'</div></div></div>';
+}
+
+/* ---------- species list ---------- */
+var listEl=$('#spList');
+function groupOf(id){ for(var i=0;i<GROUPS.length;i++) if(GROUPS[i].id===id) return GROUPS[i]; return GROUPS[0]; }
+function renderList(){
+  listEl.innerHTML='';
+  GROUPS.forEach(function(g){
+    var sps=[]; reg.forEach(function(sp){ if(sp.def.g===g.id) sps.push(sp); });
+    if(!sps.length) return;
+    var d=document.createElement('details'); d.className='grp'; d.open=(g.id==='grass'||g.id==='custom'); d.dataset.grp=g.id;
+    d.innerHTML='<summary><span>'+esc(g.label)+'</span><span class="grp-meta">'+sps.length+' <button type="button" data-loadgrp="'+g.id+'">load all</button></span></summary>';
+    sps.forEach(function(sp){ d.appendChild(rowEl(sp)); });
+    listEl.appendChild(d);
+  });
+  $$('[data-loadgrp]').forEach(function(b){ b.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); reg.forEach(function(sp){ if(sp.def.g===b.dataset.loadgrp){ sp.visible=true; enqueue(sp); renderRow(sp); } }); applyFilters(); save(); }); });
+  filterList();
+}
+function rowEl(sp){
+  var l=document.createElement('label'); l.className='sp'; l.dataset.sp=sp.def.n; if(sp.def.h) l.title=sp.def.h;
+  l.innerHTML='<input type="checkbox"><span class="dot" style="--c:'+sp.color+'"></span><span class="names"><i>'+esc(sp.def.n)+'</i><small>'+esc(sp.def.c||'')+'</small></span><span class="tier t'+esc(sp.def.t||'B')+'">'+esc(sp.def.t||'B')+'</span><span class="cnt">—</span>';
+  l.querySelector('input').addEventListener('change',function(ev){ sp.visible=ev.target.checked; if(sp.visible&&!sp.loaded) enqueue(sp); renderRow(sp); applyFilters(); save(); });
+  sp.row=l; renderRow(sp); return l;
+}
+function renderRow(sp){
+  if(!sp.row) return;
+  var cb=sp.row.querySelector('input'), c=sp.row.querySelector('.cnt');
+  cb.checked=!!sp.visible; c.className='cnt';
+  if(sp.loading){ c.classList.add('busy'); c.textContent=sp.progress&&sp.progress[1]?(fmt(sp.progress[0])+' '):''; }
+  else if(sp.error&&!sp.recs.length){ c.classList.add('err'); c.textContent='retry'; c.title=sp.error; }
+  else if(sp.loaded){ c.textContent=fmt(sp.recs.length)+(sp.capped?'+':''); c.title=(sp.total!=null?fmt(sp.total)+' photo records in QLD':'')+(sp.match&&sp.match.status==='SYNONYM'?' · GBIF lists it as '+sp.match.name:''); }
+  else if(sp.total!=null){ c.textContent=fmt(sp.total); c.title='photo records in QLD (not loaded)'; }
+  else { c.textContent='—'; }
+  if(sp.error&&!sp.recs.length){ c.onclick=function(e){ e.preventDefault(); sp.loaded=false; sp.error=null; sp.total=null; enqueue(sp); }; } else c.onclick=null;
+}
+function filterList(){
+  var q=($('#spSearch').value||'').trim().toLowerCase();
+  reg.forEach(function(sp){ if(!sp.row) return; var hit=!q||sp.def.n.toLowerCase().indexOf(q)>=0||(sp.def.c||'').toLowerCase().indexOf(q)>=0; sp.row.classList.toggle('hidden',!hit); });
+  if(q) $$('.grp').forEach(function(d){ d.open=true; });
+}
+$('#spSearch').addEventListener('input',filterList);
+$('#btnLoadA').addEventListener('click',function(){ reg.forEach(function(sp){ if(sp.def.g==='grass'&&sp.def.t==='A'){ sp.visible=true; enqueue(sp); renderRow(sp); } }); applyFilters(); save(); });
+$('#btnCountAll').addEventListener('click',countAll);
+$('#btnClearAll').addEventListener('click',function(){ reg.forEach(function(sp){ sp.visible=false; renderRow(sp); }); applyFilters(); save(); });
+function addCustom(name){
+  name=(name||'').trim().replace(/\s+/g,' '); if(!name) return;
+  name=name.charAt(0).toUpperCase()+name.slice(1);
+  var sp=reg.get(name);
+  if(!sp){ sp=mkSp({n:name,c:'',g:'custom',t:'B',h:''},reg.size); reg.set(name,sp); renderList(); }
+  sp.visible=true; enqueue(sp); renderRow(sp); applyFilters(); save();
+  $('#addName').value='';
+}
+$('#btnAdd').addEventListener('click',function(){ addCustom($('#addName').value); });
+$('#addName').addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); addCustom(e.target.value); } });
+
+/* ---------- filters UI ---------- */
+var monthsEl=$('#fMonths');
+MONTH_L.forEach(function(l,i){ var b=document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=l; b.title=MONTH_F[i]; b.dataset.m=i+1; b.addEventListener('click',function(){ toggleMonth(i+1); }); monthsEl.appendChild(b); });
+function toggleMonth(m){ if(filters.months.has(m)) filters.months.delete(m); else filters.months.add(m); syncMonths(); applyFilters(); save(); }
+function syncMonths(){ $$('#fMonths .chip').forEach(function(b){ b.classList.toggle('on',filters.months.has(+b.dataset.m)); }); }
+$('#fYear').addEventListener('change',function(e){ filters.year=+e.target.value; applyFilters(); save(); });
+$('#fUnc').addEventListener('change',function(e){ filters.unc=+e.target.value; applyFilters(); save(); });
+$('#fCap').addEventListener('change',function(e){ filters.cap=+e.target.value; save(); });
+$$('#fSrc button').forEach(function(b){ b.addEventListener('click',function(){ filters.src=b.dataset.src; $$('#fSrc button').forEach(function(x){ x.classList.toggle('on',x===b); }); applyFilters(); save(); }); });
+$$('#fProv button').forEach(function(b){ b.addEventListener('click',function(){ filters.prov=b.dataset.prov; $$('#fProv button').forEach(function(x){ x.classList.toggle('on',x===b); }); save(); }); });
+
+function setRadiusCentre(lat,lng){ radius={lat:lat,lng:lng,km:+$('#fRadius').value}; drawRadius(); applyFilters(); save(); }
+function drawRadius(){
+  if(radiusCircle){ map.removeLayer(radiusCircle); radiusCircle=null; }
+  if(!radius){ $('#radiusLabel').textContent=$('#fRadius').value+' km · no centre set'; return; }
+  radiusCircle=L.circle([radius.lat,radius.lng],{radius:radius.km*1000,color:'#e6b73f',weight:2,fillOpacity:.06,interactive:false}).addTo(map);
+  $('#radiusLabel').textContent=radius.km+' km around '+radius.lat.toFixed(4)+', '+radius.lng.toFixed(4);
+}
+$('#btnRadius').addEventListener('click',function(){ radiusArming=true; $('#btnRadius').textContent='Now tap the map…'; if(isMobile()) setTab('map'); });
+map.on('click',function(e){ if(!radiusArming) return; radiusArming=false; $('#btnRadius').textContent='Tap the map to set centre'; setRadiusCentre(e.latlng.lat,e.latlng.lng); if(isMobile()) setTab('filters'); });
+$('#btnRadiusClear').addEventListener('click',function(){ radius=null; drawRadius(); applyFilters(); save(); });
+var radT; $('#fRadius').addEventListener('input',function(e){ if(radius){ radius.km=+e.target.value; drawRadius(); clearTimeout(radT); radT=setTimeout(function(){ applyFilters(); save(); },150); } else $('#radiusLabel').textContent=e.target.value+' km · no centre set'; });
+function locate(cb){
+  if(!navigator.geolocation){ alert('Location is not available in this browser.'); return; }
+  navigator.geolocation.getCurrentPosition(function(p){ var la=p.coords.latitude, lo=p.coords.longitude; if(meMarker) map.removeLayer(meMarker); meMarker=L.marker([la,lo],{icon:L.divIcon({className:'me',html:'<div></div>',iconSize:[16,16]}),interactive:false}).addTo(map); cb(la,lo); },function(){ alert('Could not get your location. Check location permission for this site.'); },{enableHighAccuracy:true,timeout:12000,maximumAge:60000});
+}
+$('#btnLocate').addEventListener('click',function(){ locate(function(la,lo){ map.flyTo([la,lo],Math.max(map.getZoom(),11)); if(isMobile()) setTab('map'); }); });
+$('#btnRadiusMe').addEventListener('click',function(){ locate(function(la,lo){ setRadiusCentre(la,lo); map.fitBounds(radiusCircle.getBounds()); }); });
+$('#btnFit').addEventListener('click',fitShown);
+function fitShown(){ if(!shownRecs.length) return; var b=L.latLngBounds(shownRecs.map(function(r){return [r.lat,r.lng];})); map.fitBounds(b.pad(0.05)); }
+
+/* ---------- results ---------- */
+function monthCounts(recs){ var c=new Array(12).fill(0); recs.forEach(function(r){ if(r.m) c[r.m-1]++; }); return c; }
+function renderPheno(){
+  var all=[]; reg.forEach(function(sp){ if(sp.visible&&sp.loaded) sp.recs.forEach(function(r){ if(passes(r,true)) all.push(r); }); });
+  var c=monthCounts(all), mx=Math.max.apply(null,c.concat([1])), W=360,H=96,top=14,bot=16,gap=4,bw=(W-gap*13)/12, s='';
+  c.forEach(function(v,i){ var h=(H-top-bot)*v/mx, x=gap+i*(bw+gap), y=H-bot-h; var on=!filters.months.size||filters.months.has(i+1);
+    s+='<rect class="'+(on?'':'off')+'" x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+Math.max(h,1).toFixed(1)+'" rx="2" data-m="'+(i+1)+'"><title>'+MONTH_F[i]+': '+fmt(v)+'</title></rect>';
+    s+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(H-4)+'" text-anchor="middle">'+MONTH_L[i]+'</text>';
+    if(v&&h>12) s+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(y-3).toFixed(1)+'" text-anchor="middle">'+(v>=1000?(v/1000).toFixed(1)+'k':v)+'</text>';
+  });
+  var svg=$('#pheno'); svg.innerHTML=s;
+  $$('#pheno rect').forEach(function(r){ r.addEventListener('click',function(){ toggleMonth(+r.dataset.m); }); });
+}
+function renderHotspots(){
+  var cells={}; var el=$('#hotspots');
+  shownRecs.forEach(function(r){ var k=Math.floor(r.lat*10)+','+Math.floor(r.lng*10); var c=cells[k]||(cells[k]={n:0,lat:0,lng:0,sp:{}}); c.n++; c.lat+=r.lat; c.lng+=r.lng; c.sp[r.sp.def.n]=(c.sp[r.sp.def.n]||0)+1; });
+  var arr=Object.keys(cells).map(function(k){return cells[k];}).sort(function(a,b){return b.n-a.n;}).slice(0,12);
+  if(!arr.length){ el.innerHTML='<p class="hint">Load a species to rank the densest cells.</p>'; return; }
+  el.innerHTML=arr.map(function(c,i){ var la=c.lat/c.n, lo=c.lng/c.n; var sps=Object.keys(c.sp).sort(function(a,b){return c.sp[b]-c.sp[a];}).slice(0,3).map(function(n){ var g=n.split(' '); return (g[0].charAt(0)+'. '+(g[1]||''))+' '+c.sp[n]; }).join(' · ');
+    return '<div class="hot"><span class="rank">'+(i+1)+'</span><span class="what"><b>'+fmt(c.n)+'</b> points · <span class="mono">'+la.toFixed(2)+', '+lo.toFixed(2)+'</span><small>'+esc(sps)+'</small></span><button class="btn xs" type="button" data-zoom="'+la.toFixed(4)+','+lo.toFixed(4)+'">Zoom</button></div>'; }).join('');
+  $$('#hotspots [data-zoom]').forEach(function(b){ b.addEventListener('click',function(){ var p=b.dataset.zoom.split(','); map.setView([+p[0],+p[1]],12); if(isMobile()) setTab('map'); }); });
+}
+function renderResults(){
+  var el=$('#resList'), rows=[];
+  reg.forEach(function(sp){ if(sp.visible&&sp.loaded) rows.push(sp); });
+  if(!rows.length){ el.innerHTML='<p class="hint">Nothing loaded yet.</p>'; return; }
+  el.innerHTML=rows.map(function(sp){
+    var c=monthCounts(sp.recs.filter(function(r){return passes(r,true);})), mx=Math.max.apply(null,c.concat([1]));
+    var bars=c.map(function(v,i){ var h=20*v/mx; return '<rect x="'+(i*5)+'" y="'+(22-h).toFixed(1)+'" width="4" height="'+Math.max(h,0.5).toFixed(1)+'"/>'; }).join('');
+    return '<div class="rs" data-sp="'+esc(sp.def.n)+'"><span class="dot" style="--c:'+sp.color+'"></span><span class="names"><i>'+esc(sp.def.n)+'</i><small class="nums">'+fmt(sp.shown)+' shown / '+fmt(sp.recs.length)+(sp.capped?'+':'')+' loaded'+(sp.total&&sp.total>sp.recs.length?' / '+fmt(sp.total)+' in QLD':'')+' · '+(sp.prov==='ala'?'ALA':'GBIF')+(sp.error?' · partial':'')+'</small></span><svg class="spark" viewBox="0 0 60 22" style="--c:'+sp.color+'">'+bars+'</svg><span class="acts"><button class="btn xs" type="button" data-zoomsp>Zoom</button><button class="btn xs ghost" type="button" data-hidesp>Hide</button></span></div>';
+  }).join('');
+  $$('#resList [data-zoomsp]').forEach(function(b){ b.addEventListener('click',function(){ var sp=reg.get(b.closest('.rs').dataset.sp); var pts=sp.recs.filter(function(r){return passes(r,false);}).map(function(r){return [r.lat,r.lng];}); if(pts.length){ map.fitBounds(L.latLngBounds(pts).pad(0.05)); if(isMobile()) setTab('map'); } }); });
+  $$('#resList [data-hidesp]').forEach(function(b){ b.addEventListener('click',function(){ var sp=reg.get(b.closest('.rs').dataset.sp); sp.visible=false; renderRow(sp); applyFilters(); save(); }); });
+}
+
+/* ---------- export ---------- */
+function download(name,text,type){ var blob=new Blob([text],{type:type}); var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },500); }
+function csvCell(v){ v=v==null?'':String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; }
+function toCsv(recs){
+  var head=['species','matched_name','common_name','group','tier','lat','lon','date','year','month','record_type','source','recorded_by','licence','coord_uncertainty_m','locality','record_url','observation_url','photo_url','provider'];
+  var rows=recs.map(function(r){ return [r.sp.def.n,r.sci,r.sp.def.c,r.sp.def.g,r.sp.def.t,r.lat,r.lng,r.date?r.date.toISOString().slice(0,10):'',r.y||'',r.m||'',r.kind,r.src,r.by,r.lic,r.unc||'',r.loc,r.link||'',r.ref||'',r.large||r.thumb,r.prov].map(csvCell).join(','); });
+  return head.join(',')+'\n'+rows.join('\n')+'\n';
+}
+function toGeoJson(recs){
+  return JSON.stringify({type:'FeatureCollection',features:recs.map(function(r){ return {type:'Feature',geometry:{type:'Point',coordinates:[r.lng,r.lat]},properties:{species:r.sp.def.n,matched_name:r.sci,common_name:r.sp.def.c,group:r.sp.def.g,tier:r.sp.def.t,date:r.date?r.date.toISOString().slice(0,10):null,year:r.y,month:r.m,record_type:r.kind,source:r.src,recorded_by:r.by,licence:r.lic,coord_uncertainty_m:r.unc,locality:r.loc,record_url:r.link,observation_url:r.ref,photo_url:r.large||r.thumb,provider:r.prov}}; })});
+}
+function stamp(){ var d=new Date(); return d.getFullYear()+('0'+(d.getMonth()+1)).slice(-2)+('0'+d.getDate()).slice(-2); }
+$('#btnCsv').addEventListener('click',function(){ if(!shownRecs.length) return; download('qld-seed-atlas-'+stamp()+'.csv',toCsv(shownRecs),'text/csv'); });
+$('#btnGeo').addEventListener('click',function(){ if(!shownRecs.length) return; download('qld-seed-atlas-'+stamp()+'.geojson',toGeoJson(shownRecs),'application/geo+json'); });
+
+/* ---------- progress toast ---------- */
+function showProgress(){
+  var t=$('#toast'), busy=[]; reg.forEach(function(sp){ if(sp.loading) busy.push(sp); });
+  var errs=[]; reg.forEach(function(sp){ if(sp.error&&!sp.recs.length) errs.push(sp); });
+  if(!busy.length&&!queue.length){
+    if(errs.length&&!t.dataset.shownErr){ t.hidden=false; t.classList.add('err'); $('#tTitle').textContent=(errs.length===1?'1 species':errs.length+' species')+' did not load'; $('#tList').innerHTML=errs.slice(0,3).map(function(sp){ return esc(sp.def.n)+': '+esc(sp.error); }).join('<br>')+'<br>Tap "retry" on the species'+(filters.prov==='ala'?', or switch the data provider to GBIF in Filters.':'.'); $('#tBar').style.width='0%'; $('#btnStop').textContent='Close'; t.dataset.shownErr='1'; }
+    else if(!errs.length){ t.hidden=true; delete t.dataset.shownErr; }
+    return;
+  }
+  t.hidden=false; t.classList.remove('err'); delete t.dataset.shownErr; $('#btnStop').textContent='Stop';
+  $('#tTitle').textContent='Loading '+(busy.length+queue.length)+' species from '+(filters.prov==='ala'?'ALA':'GBIF');
+  var done=0,tot=0; busy.forEach(function(sp){ if(sp.progress){ done+=sp.progress[0]; tot+=sp.progress[1]||0; } });
+  $('#tList').innerHTML=busy.map(function(sp){ return esc(sp.def.n)+' · '+(sp.progress&&sp.progress[1]?fmt(sp.progress[0])+' / '+fmt(sp.progress[1]):'…'); }).join('<br>')+(queue.length?'<br>'+queue.length+' queued':'');
+  $('#tBar').style.width=(tot?Math.round(100*done/tot):5)+'%';
+}
+$('#btnStop').addEventListener('click',function(){ var t=$('#toast'); if($('#btnStop').textContent==='Close'){ t.hidden=true; return; } stopFlag=true; queue.forEach(function(sp){ sp.visible=false; renderRow(sp); }); queue.length=0; showProgress(); save(); });
+
+/* ---------- tabs ---------- */
+function setTab(id){
+  activeTab=id;
+  $$('.tab').forEach(function(b){ b.classList.toggle('on',b.dataset.tab===id); });
+  $$('.pane').forEach(function(p){ p.classList.toggle('on',p.id==='pane-'+id); });
+  $('#side').classList.toggle('closed',id==='map');
+  setTimeout(function(){ map.invalidateSize(); },280);
+  save();
+}
+$$('.tab').forEach(function(b){ b.addEventListener('click',function(){ setTab(b.dataset.tab); }); });
+window.addEventListener('resize',function(){ if(!isMobile()&&activeTab==='map') setTab('species'); map.invalidateSize(); });
+
+/* ---------- init ---------- */
+(function init(){
+  var s=restore();
+  if(s&&s.custom) s.custom.forEach(function(d){ if(!reg.has(d.n)){ d.g='custom'; reg.set(d.n,mkSp(d,reg.size)); } });
+  if(s&&s.counts) Object.keys(s.counts).forEach(function(n){ var sp=reg.get(n); if(sp) sp.total=s.counts[n]; });
+  if(s&&s.filters){ filters.year=+s.filters.year||0; filters.months=new Set(s.filters.months||[]); filters.src=s.filters.src||'all'; filters.unc=+s.filters.unc||0; filters.cap=s.filters.cap==null?5000:+s.filters.cap; filters.prov=s.filters.prov==='ala'?'ala':'gbif'; }
+  if(s&&s.match&&typeof s.match==='object') matchCache=s.match;
+  $('#fYear').value=String(filters.year); $('#fUnc').value=String(filters.unc); $('#fCap').value=String(filters.cap); syncMonths();
+  $$('#fSrc button').forEach(function(x){ x.classList.toggle('on',x.dataset.src===filters.src); });
+  $$('#fProv button').forEach(function(x){ x.classList.toggle('on',x.dataset.prov===filters.prov); });
+  if(s&&s.radius){ radius=s.radius; $('#fRadius').value=radius.km; }
+  renderList(); drawRadius();
+  setBase((s&&s.base)||'sat');
+  var sel=(s&&s.sel&&s.sel.length)?s.sel:['Heteropogon contortus','Themeda triandra'];
+  sel.forEach(function(n){ var sp=reg.get(n); if(sp){ sp.visible=true; renderRow(sp); enqueue(sp); } });
+  var tab=(s&&s.tab)||'species'; if(!isMobile()&&tab==='map') tab='species'; if(isMobile()&&!s) tab='map';
+  setTab(tab);
+  applyFilters();
+})();
+})();
+</script>
+</body>
+</html>
