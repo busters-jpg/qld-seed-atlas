@@ -1233,7 +1233,7 @@ const GROUPS = [
 var ALA_SEARCH='https://biocache-ws.ala.org.au/ws/occurrences/search';
 var ALA_IMG='https://images.ala.org.au/image/';
 var GBIF='https://api.gbif.org/v1/';
-var GBIF_PAGE=300, GBIF_MAX=100000, ALA_PAGE=1000;
+var GBIF_PAGE=300, GBIF_MAX=100000, ALA_PAGE=100; /* ALA refuses cross-origin pages above 100 */
 /* Queensland outline (lon lat, anticlockwise) used as the GBIF geometry filter; ALA uses its own state field. */
 var QLD_WKT='POLYGON((138 -29,148.95 -29,149.6 -28.85,150.3 -28.55,150.75 -28.9,151.17 -28.87,151.5 -28.98,151.93 -28.92,152.1 -28.6,152.5 -28.25,153.1 -28.27,153.55 -28.165,154.3 -28.165,156 -24.5,156 -18,152 -12,150 -10.5,147 -10.5,144.6 -10.3,144.3 -9.3,138 -9.3,138 -29))';
 var QLD_BOUNDS=[[-29.2,137.9],[-9.0,153.7]];
@@ -1392,15 +1392,15 @@ function loadGbif(sp,recs,seen){
 function alaUrl(q,start,pageSize){
   var p=new URLSearchParams();
   p.set('q',q); p.append('fq','state:"Queensland"'); p.append('fq','multimedia:"Image"');
-  p.set('pageSize',pageSize==null?ALA_PAGE:pageSize); p.set('start',start); p.set('startIndex',start);
+  p.set('pageSize',pageSize==null?ALA_PAGE:pageSize); p.set('start',start); p.set('sort','id'); p.set('dir','asc');
   return ALA_SEARCH+'?'+p.toString();
 }
 function alaImages(o){
-  var thumb=o.smallImageUrl||o.thumbnailUrl||null, large=o.largeImageUrl||o.imageUrl||null;
-  var id=o.image||(Array.isArray(o.images)&&o.images.length?o.images[0]:null)||null;
-  if(id&&/^https?:/.test(id)){ if(!large) large=id; id=null; }
-  if(!thumb&&id) thumb=ALA_IMG+'proxyImageThumbnailLarge?imageId='+encodeURIComponent(id);
-  if(!large&&id) large=ALA_IMG+'proxyImage?imageId='+encodeURIComponent(id);
+  var id=o.image||(Array.isArray(o.images)&&o.images.length?o.images[0]:null)||null, thumb=null, large=null;
+  if(id&&/^https?:/.test(id)){ large=id; id=null; }
+  if(id){ thumb=ALA_IMG+'proxyImageThumbnailLarge?imageId='+encodeURIComponent(id); large=ALA_IMG+'proxyImage?imageId='+encodeURIComponent(id); }
+  thumb=thumb||o.largeImageUrl||o.smallImageUrl||o.thumbnailUrl||null;
+  large=large||o.imageUrl||o.largeImageUrl||thumb;
   if(!thumb&&large) thumb=large;
   return thumb?{thumb:thumb,large:large||thumb,n:Array.isArray(o.images)?o.images.length:1}:null;
 }
@@ -1417,17 +1417,20 @@ function normAla(o,sp){
     link:o.uuid?'https://biocache.ala.org.au/occurrences/'+encodeURIComponent(o.uuid):null,ref:null,prov:'ala'};
 }
 function loadAla(sp,recs,seen){
-  var cap=filters.cap||Infinity, q='taxa:"'+sp.def.n+'"', total=0, start=ALA_PAGE;
+  var cap=filters.cap||Infinity, q='taxa:"'+sp.def.n+'"', total=0, done=0;
   function ingest(j){ (j.occurrences||[]).forEach(function(o){ var r=normAla(o,sp); if(r&&!seen[r.id]){ seen[r.id]=1; recs.push(r); } }); }
   return getJson(alaUrl(q,0)).then(function(j){
-    total=j.totalRecords||0; sp.total=total; ingest(j);
-    var target=Math.min(total,cap);
-    function next(){
-      sp.progress=[recs.length,target]; showProgress();
-      if(start>=target||stopFlag) return Promise.resolve();
-      return getJson(alaUrl(q,start)).then(function(jj){ if(!jj.occurrences||!jj.occurrences.length) return; ingest(jj); start+=ALA_PAGE; return next(); });
+    total=j.totalRecords||0; sp.total=total; ingest(j); done=ALA_PAGE;
+    var target=Math.min(total,cap), offsets=[];
+    for(var o=ALA_PAGE;o<target;o+=ALA_PAGE) offsets.push(o);
+    sp.progress=[recs.length,target]; showProgress();
+    var i=0;
+    function worker(){
+      if(i>=offsets.length||stopFlag) return Promise.resolve();
+      var off=offsets[i++];
+      return getJson(alaUrl(q,off)).then(function(jj){ ingest(jj); done+=ALA_PAGE; sp.progress=[recs.length,target]; showProgress(); return worker(); });
     }
-    return next().then(function(){ sp.capped=Math.min(start,target)<total; });
+    return Promise.all([worker(),worker(),worker()]).then(function(){ sp.capped=Math.min(done,target)<total; });
   });
 }
 
