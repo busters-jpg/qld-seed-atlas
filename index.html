@@ -925,8 +925,12 @@ input[type=range]{width:100%;accent-color:var(--accent);margin-top:8px}
 .ph .chips2 b.L{background:var(--accent);color:var(--accent-ink)}
 .ph.big{outline:2px solid var(--accent);outline-offset:-2px}
 .ph:focus-visible{outline:2px solid var(--accent)}
-.me{background:transparent;border:0}
-.me>div{width:16px;height:16px;border-radius:50%;background:#3b9bff;border:3px solid #fff;box-shadow:0 0 0 3px rgba(59,155,255,.35)}
+.me{background:transparent;border:0;position:relative}
+.me .me-dot{position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#3b9bff;border:3px solid #fff;box-shadow:0 0 0 3px rgba(59,155,255,.35),0 1px 4px rgba(0,0,0,.5);box-sizing:border-box}
+.me .me-head{position:absolute;left:11px;top:11px;width:0;height:0;transform-origin:0 0;display:none}
+.me .me-head::before{content:"";position:absolute;left:-9px;top:-30px;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:22px solid rgba(59,155,255,.55)}
+#btnLocate.on{border-color:#3b9bff;color:#3b9bff}
+#btnLocate.follow{background:#3b9bff;color:#fff;border-color:#3b9bff}
 
 #toast{position:fixed;top:calc(var(--top) + 10px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:2000;background:var(--panel);border:1px solid var(--line-2);border-radius:12px;box-shadow:var(--shadow);padding:10px 12px;width:min(420px,calc(100vw - 32px));font-size:12.5px}
 #toast .t-row{display:flex;justify-content:space-between;gap:10px;align-items:center}
@@ -965,9 +969,10 @@ input[type=range]{width:100%;accent-color:var(--accent);margin-top:8px}
     </div>
     <div class="top-controls">
       <div class="seg" role="group" aria-label="Base layer">
-        <button data-base="sat" class="on" type="button">Satellite</button>
-        <button data-base="satlabels" type="button">+ Labels</button>
+        <button data-base="hybrid" class="on" type="button">Hybrid</button>
+        <button data-base="sat" type="button">Satellite</button>
         <button data-base="streets" type="button">Streets</button>
+        <button data-base="topo" type="button">Topo</button>
       </div>
       <button id="btnLocate" class="btn icon" type="button" title="Show my location" aria-label="Show my location">◎</button>
       <button id="btnFit" class="btn icon" type="button" title="Zoom to shown points" aria-label="Zoom to shown points">⤢</button>
@@ -1015,10 +1020,12 @@ input[type=range]{width:100%;accent-color:var(--accent);margin-top:8px}
       <div class="f" id="baseField" style="display:none;margin-top:4px">
         <label>Base map</label>
         <div class="seg" role="group" aria-label="Base layer (mobile)">
-          <button data-base="sat" class="on" type="button">Satellite</button>
-          <button data-base="satlabels" type="button">+ Labels</button>
+          <button data-base="hybrid" class="on" type="button">Hybrid</button>
+          <button data-base="sat" type="button">Satellite</button>
           <button data-base="streets" type="button">Streets</button>
+          <button data-base="topo" type="button">Topo</button>
         </div>
+        <p class="hint">Hybrid = satellite with towns, roads and names, like Google's satellite view.</p>
       </div>
       <div class="f">
         <label for="fYear">Years</label>
@@ -1308,6 +1315,7 @@ function fmt(n){return (n==null||isNaN(n))?'—':Number(n).toLocaleString('en-AU
 function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
 function colorFor(i){var h=(i*137.508)%360;return 'hsl('+h.toFixed(0)+' 85% 62%)';}
 function isMobile(){return window.matchMedia('(max-width:760px)').matches;}
+function fmtKm(km){ return km<10?km.toFixed(1)+' km':fmt(Math.round(km))+' km'; }
 function hav(a1,o1,a2,o2){var R=6371,d=Math.PI/180,dA=(a2-a1)*d,dO=(o2-o1)*d;var x=Math.sin(dA/2)*Math.sin(dA/2)+Math.cos(a1*d)*Math.cos(a2*d)*Math.sin(dO/2)*Math.sin(dO/2);return 2*R*Math.asin(Math.sqrt(x));}
 
 /* ---------- state ---------- */
@@ -1331,15 +1339,22 @@ function restore(){ try{return JSON.parse(localStorage.getItem(LS_KEY)||'null');
 var map=L.map('map',{zoomControl:false,preferCanvas:true,renderer:L.canvas({padding:0.5}),worldCopyJump:false,attributionControl:true,minZoom:4,maxZoom:20});
 L.control.zoom({position:'topright'}).addTo(map);
 map.createPane('labels'); map.getPane('labels').style.zIndex=350; map.getPane('labels').style.pointerEvents='none';
-var ESRI='Imagery © Esri, Maxar, Earthstar Geographics, and the GIS User Community';
-var layerSat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,maxNativeZoom:18,attribution:ESRI});
-var layerLabels=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,maxNativeZoom:18,pane:'labels'});
-var layerStreets=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'});
+var ESRI='© Esri, Maxar, Earthstar Geographics, HERE, Garmin, OpenStreetMap contributors';
+var ARC='https://server.arcgisonline.com/ArcGIS/rest/services/';
+var layerSat=L.tileLayer(ARC+'World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,maxNativeZoom:18,attribution:ESRI});
+var layerRoads=L.tileLayer(ARC+'Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,maxNativeZoom:18,pane:'labels'});
+var layerPlaces=L.tileLayer(ARC+'Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,maxNativeZoom:18,pane:'labels'});
+var layerStreets=L.tileLayer(ARC+'World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,maxNativeZoom:18,attribution:ESRI});
+var layerTopo=L.tileLayer(ARC+'World_Topo_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:20,maxNativeZoom:18,attribution:ESRI});
 map.fitBounds(QLD_BOUNDS,{padding:[10,10]});
 function setBase(b){
+  if(b==='satlabels') b='hybrid';
+  if(!/^(hybrid|sat|streets|topo)$/.test(b)) b='hybrid';
   base=b;
-  [layerSat,layerLabels,layerStreets].forEach(function(l){ if(map.hasLayer(l)) map.removeLayer(l); });
-  if(b==='streets'){ layerStreets.addTo(map); } else { layerSat.addTo(map); if(b==='satlabels') layerLabels.addTo(map); }
+  [layerSat,layerRoads,layerPlaces,layerStreets,layerTopo].forEach(function(l){ if(map.hasLayer(l)) map.removeLayer(l); });
+  if(b==='streets') layerStreets.addTo(map);
+  else if(b==='topo') layerTopo.addTo(map);
+  else { layerSat.addTo(map); if(b==='hybrid'){ layerRoads.addTo(map); layerPlaces.addTo(map); } }
   $$('[data-base]').forEach(function(x){ x.classList.toggle('on',x.dataset.base===b); });
   save();
 }
@@ -1651,6 +1666,7 @@ function popupHtml(r){
   links+='<a href="https://www.google.com/maps/search/?api=1&query='+r.lat+'%2C'+r.lng+'" target="_blank" rel="noopener">Google Maps</a>';
   links+='<a href="https://maps.apple.com/?ll='+r.lat+','+r.lng+'&q='+encodeURIComponent(r.sci)+'" target="_blank" rel="noopener">Apple Maps</a>';
   var more=r.nimg>1?'<span class="pp-n">+'+(r.nimg-1)+' more</span>':'';
+  var fromYou=geo.pos?' · '+fmtKm(hav(geo.pos.lat,geo.pos.lng,r.lat,r.lng))+' from you':'';
   var st=r.stand||computeStand(r), tag=tags[tagKey(r)];
   var standHtml='<div class="pp-stand"><span class="stand s'+st.lvl+'">'+esc(STAND_L[st.lvl])+'</span>'+(st.why?'<span class="pp-why">'+esc(st.why)+'</span>':'<span class="pp-why">No abundance notes on this record</span>')+'</div>'+
     '<div class="pp-tag" data-id="'+esc(r.id)+'"><span class="pp-tag-l">Tag it</span>'+[3,2,1].map(function(l){ return '<button class="btn xs'+(tag&&tag.lvl===l?' primary':'')+'" type="button" data-tag="'+l+'">'+esc(['','Few','Some','Large'][l])+'</button>'; }).join('')+(tag?'<button class="btn xs ghost" type="button" data-tag="0">Clear</button>':'')+
@@ -1661,7 +1677,7 @@ function popupHtml(r){
     '<div class="pp-meta">'+esc(date)+(r.src?' · '+esc(r.src):'')+(r.by?' · '+esc(r.by):'')+'</div>'+
     '<div class="pp-meta">'+esc(r.lic||'Licence not stated')+(r.unc?' · ±'+fmt(Math.round(r.unc))+' m':'')+(r.loc?' · '+esc(r.loc):'')+'</div>'+
     (r.notes&&!st.why?'<div class="pp-meta pp-notes">'+esc(r.notes.slice(0,220))+(r.notes.length>220?'…':'')+'</div>':'')+
-    '<div class="pp-coords"><code>'+c+'</code><button class="btn xs" type="button" data-copy="'+c+'">Copy</button></div>'+
+    '<div class="pp-coords"><code>'+c+'</code><button class="btn xs" type="button" data-copy="'+c+'">Copy</button>'+(fromYou?'<span class="pp-meta" style="margin:0">'+esc(fromYou.slice(3))+'</span>':'')+'</div>'+
     '<div class="pp-links">'+links+'</div></div></div>';
 }
 
@@ -1741,11 +1757,58 @@ $('#btnRadius').addEventListener('click',function(){ radiusArming=true; $('#btnR
 map.on('click',function(e){ if(!radiusArming) return; radiusArming=false; $('#btnRadius').textContent='Tap the map to set centre'; setRadiusCentre(e.latlng.lat,e.latlng.lng); if(isMobile()) setTab('filters'); });
 $('#btnRadiusClear').addEventListener('click',function(){ radius=null; drawRadius(); applyFilters(); save(); });
 var radT; $('#fRadius').addEventListener('input',function(e){ if(radius){ radius.km=+e.target.value; drawRadius(); clearTimeout(radT); radT=setTimeout(function(){ applyFilters(); save(); },150); } else $('#radiusLabel').textContent=e.target.value+' km · no centre set'; });
-function locate(cb){
-  if(!navigator.geolocation){ alert('Location is not available in this browser.'); return; }
-  navigator.geolocation.getCurrentPosition(function(p){ var la=p.coords.latitude, lo=p.coords.longitude; if(meMarker) map.removeLayer(meMarker); meMarker=L.marker([la,lo],{icon:L.divIcon({className:'me',html:'<div></div>',iconSize:[16,16]}),interactive:false}).addTo(map); cb(la,lo); },function(){ alert('Could not get your location. Check location permission for this site.'); },{enableHighAccuracy:true,timeout:12000,maximumAge:60000});
+/* ---------- your location: live blue dot, accuracy ring, follow mode ---------- */
+var geo={watch:null,pos:null,follow:false,dot:null,ring:null,wasOn:false,err:null};
+function notify(msg,isErr){
+  var t=$('#toast'); t.hidden=false; t.classList.toggle('err',!!isErr); delete t.dataset.shownErr;
+  $('#tTitle').textContent=msg; $('#tList').innerHTML=''; $('#tBar').style.width='0%'; $('#btnStop').textContent='Close';
+  clearTimeout(notify.t); notify.t=setTimeout(function(){ if($('#btnStop').textContent==='Close') t.hidden=true; },6000);
 }
-$('#btnLocate').addEventListener('click',function(){ locate(function(la,lo){ map.flyTo([la,lo],Math.max(map.getZoom(),11)); if(isMobile()) setTab('map'); }); });
+function drawMe(){
+  if(!geo.pos) return;
+  var ll=[geo.pos.lat,geo.pos.lng];
+  if(!geo.dot){
+    geo.ring=L.circle(ll,{radius:geo.pos.acc||0,color:'#3b9bff',weight:1,fillColor:'#3b9bff',fillOpacity:.12,interactive:false}).addTo(map);
+    geo.dot=L.marker(ll,{icon:L.divIcon({className:'me',html:'<div class="me-dot"></div><div class="me-head"></div>',iconSize:[22,22],iconAnchor:[11,11]}),interactive:false,zIndexOffset:1000}).addTo(map);
+  } else { geo.dot.setLatLng(ll); geo.ring.setLatLng(ll); geo.ring.setRadius(geo.pos.acc||0); }
+  var el=geo.dot.getElement(); if(el){ var h=el.querySelector('.me-head'); if(h){ h.style.display=geo.pos.heading==null?'none':'block'; if(geo.pos.heading!=null) h.style.transform='rotate('+geo.pos.heading+'deg)'; } }
+  meMarker=geo.dot;
+}
+function onPos(p){
+  var first=!geo.pos;
+  geo.pos={lat:p.coords.latitude,lng:p.coords.longitude,acc:p.coords.accuracy||null,heading:(typeof p.coords.heading==='number'&&!isNaN(p.coords.heading)&&p.coords.speed>0.5)?p.coords.heading:null,t:Date.now()};
+  geo.err=null; drawMe(); syncLocateBtn();
+  if(geo.follow){ if(first) map.setView([geo.pos.lat,geo.pos.lng],Math.max(map.getZoom(),13)); else map.panTo([geo.pos.lat,geo.pos.lng],{animate:true,duration:.4}); }
+  clearTimeout(onPos.t); onPos.t=setTimeout(function(){ renderStands(); },800);
+}
+function onGeoErr(e){
+  geo.err=e; syncLocateBtn();
+  var msg=e&&e.code===1?'Location is blocked for this site. iPhone: Settings → Privacy → Location Services → Safari (or the Home Screen app) → While Using.':'Could not get a location fix yet. Try outside or wait a moment.';
+  notify(msg,true);
+}
+function startGeo(){
+  if(!navigator.geolocation){ notify('Location is not available in this browser.',true); return false; }
+  if(geo.watch!=null) return true;
+  geo.watch=navigator.geolocation.watchPosition(onPos,onGeoErr,{enableHighAccuracy:true,maximumAge:3000,timeout:20000});
+  geo.wasOn=true; syncLocateBtn(); return true;
+}
+function stopGeo(){ if(geo.watch!=null&&navigator.geolocation){ navigator.geolocation.clearWatch(geo.watch); } geo.watch=null; geo.follow=false; syncLocateBtn(); }
+function syncLocateBtn(){
+  var b=$('#btnLocate'); b.classList.toggle('on',geo.watch!=null); b.classList.toggle('follow',!!geo.follow&&geo.watch!=null);
+  b.title=geo.watch==null?'Show my location':(geo.follow?'Following you · tap to stop':'Tap to centre on you');
+}
+$('#btnLocate').addEventListener('click',function(){
+  if(geo.watch==null){ geo.follow=true; startGeo(); if(isMobile()) setTab('map'); return; }
+  if(geo.follow){ stopGeo(); return; }
+  geo.follow=true; syncLocateBtn(); if(geo.pos) map.setView([geo.pos.lat,geo.pos.lng],Math.max(map.getZoom(),13)); if(isMobile()) setTab('map');
+});
+map.on('dragstart',function(){ if(geo.follow){ geo.follow=false; syncLocateBtn(); } });
+document.addEventListener('visibilitychange',function(){ if(document.hidden){ if(geo.watch!=null){ navigator.geolocation.clearWatch(geo.watch); geo.watch=null; } } else if(geo.wasOn&&geo.watch==null){ startGeo(); } });
+function locate(cb){
+  if(geo.pos&&Date.now()-geo.pos.t<30000){ cb(geo.pos.lat,geo.pos.lng); return; }
+  if(!navigator.geolocation){ notify('Location is not available in this browser.',true); return; }
+  navigator.geolocation.getCurrentPosition(function(p){ onPos(p); cb(geo.pos.lat,geo.pos.lng); },onGeoErr,{enableHighAccuracy:true,timeout:15000,maximumAge:30000});
+}
 $('#btnRadiusMe').addEventListener('click',function(){ locate(function(la,lo){ setRadiusCentre(la,lo); map.fitBounds(radiusCircle.getBounds()); }); });
 $('#btnFit').addEventListener('click',fitShown);
 function fitShown(){ if(!shownRecs.length) return; var b=L.latLngBounds(shownRecs.map(function(r){return [r.lat,r.lng];})); map.fitBounds(b.pad(0.05)); }
@@ -1772,7 +1835,7 @@ function renderHotspots(){
     return '<div class="hot"><span class="rank">'+(i+1)+'</span><span class="what"><b>'+fmt(c.n)+'</b> points · <span class="mono">'+la.toFixed(2)+', '+lo.toFixed(2)+'</span><small>'+esc(sps)+'</small></span><button class="btn xs" type="button" data-zoom="'+la.toFixed(4)+','+lo.toFixed(4)+'">Zoom</button></div>'; }).join('');
   $$('#hotspots [data-zoom]').forEach(function(b){ b.addEventListener('click',function(){ var p=b.dataset.zoom.split(','); map.setView([+p[0],+p[1]],12); if(isMobile()) setTab('map'); }); });
 }
-function refPoint(){ if(radius) return radius; if(meMarker){ var ll=meMarker.getLatLng(); return {lat:ll.lat,lng:ll.lng}; } return null; }
+function refPoint(){ if(geo.pos) return geo.pos; if(radius) return radius; return null; }
 function renderStands(){
   var el=$('#stands'), cells={};
   shownRecs.forEach(function(r){
@@ -1796,7 +1859,7 @@ function renderStands(){
     var sps=Object.keys(c.sp).sort(function(a,b){ return c.sp[b]-c.sp[a]; }).slice(0,3).map(function(n){ var g=n.split(' '); return g[0].charAt(0)+'. '+(g[1]||'')+' '+c.sp[n]; }).join(' · ');
     var where=(c.loc?c.loc.slice(0,48):c.la.toFixed(2)+', '+c.lo.toFixed(2));
     var ev=[c.tag?c.tag+' tagged':'',c.notes?c.notes+' with notes':'',c.count?c.count+' counted':'',c.dens?'dense sightings':''].filter(Boolean).join(' · ');
-    return '<div class="hot stand-row"><span class="rank">'+(i+1)+'</span><span class="what"><b>'+esc(sps)+'</b>'+(c.dist!=null?' · <span class="mono">'+fmt(Math.round(c.dist))+' km</span>':'')+'<small>'+esc(where)+' · '+esc(ev)+(c.why?' — '+esc(c.why.slice(0,90)):'')+'</small></span><span class="acts"><button class="btn xs" type="button" data-zoom="'+c.la.toFixed(4)+','+c.lo.toFixed(4)+'">Zoom</button><a class="btn xs ghost" href="https://www.google.com/maps/dir/?api=1&destination='+c.la.toFixed(5)+'%2C'+c.lo.toFixed(5)+'" target="_blank" rel="noopener">Go</a></span></div>';
+    return '<div class="hot stand-row"><span class="rank">'+(i+1)+'</span><span class="what"><b>'+esc(sps)+'</b>'+(c.dist!=null?' · <span class="mono">'+fmtKm(c.dist)+'</span>':'')+'<small>'+esc(where)+' · '+esc(ev)+(c.why?' — '+esc(c.why.slice(0,90)):'')+'</small></span><span class="acts"><button class="btn xs" type="button" data-zoom="'+c.la.toFixed(4)+','+c.lo.toFixed(4)+'">Zoom</button><a class="btn xs ghost" href="https://www.google.com/maps/dir/?api=1&destination='+c.la.toFixed(5)+'%2C'+c.lo.toFixed(5)+'" target="_blank" rel="noopener">Go</a></span></div>';
   }).join('');
   $$('#stands [data-zoom]').forEach(function(b){ b.addEventListener('click',function(){ var p=b.dataset.zoom.split(','); map.setView([+p[0],+p[1]],13); if(isMobile()) setTab('map'); }); });
 }
@@ -1907,7 +1970,7 @@ window.addEventListener('resize',function(){ if(!isMobile()&&activeTab==='map') 
   $$('#fProv button').forEach(function(x){ x.classList.toggle('on',x.dataset.prov===filters.prov); });
   if(s&&s.radius){ radius=s.radius; $('#fRadius').value=radius.km; }
   renderList(); drawRadius();
-  setBase((s&&s.base)||'sat');
+  setBase((s&&s.base)||'hybrid');
   var sel=(s&&s.sel&&s.sel.length)?s.sel:['Heteropogon contortus','Themeda triandra'];
   sel.forEach(function(n){ var sp=reg.get(n); if(sp){ sp.visible=true; renderRow(sp); enqueue(sp); } });
   var tab=(s&&s.tab)||'species'; if(!isMobile()&&tab==='map') tab='species'; if(isMobile()&&!s) tab='map';

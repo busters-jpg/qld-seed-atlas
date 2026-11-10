@@ -15,7 +15,7 @@ Points are sightings, not confirmed stands. Verify by drone and on the ground be
 - Filters: year, month photographed (phenology proxy), record type, coordinate uncertainty, radius from a tapped point or your location, load cap.
 - Photos: thumbnail grid of every photo point in the current map view (or all shown), newest first; tap one to jump to its point.
 - Results: month histogram, top hotspot cells (10 km), per-species sparklines, CSV / GeoJSON export (opens in QGIS).
-- iPhone: open in Safari → Share → Add to Home Screen.
+- iPhone: open in Safari → Share → Add to Home Screen. The ◎ button tracks your location (blue dot, accuracy ring, heading); tap again to stop. Base maps: Hybrid (satellite + towns and roads), Satellite, Streets, Topo.
 
 ## Edit the species list
 
